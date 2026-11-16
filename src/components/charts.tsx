@@ -4,13 +4,14 @@ import { useState } from "react";
 import { fmtNumber } from "@/lib/format";
 
 /**
- * Minimal, dependency-free charts. Palette validated for CVD separation (brand-500 #1a8060 /
- * accent-500 #c99a2e); gold falls below 3:1 contrast so every chart ships a legend + table view.
+ * Minimal, dependency-free charts in the brand black & gold. Black vs gold differ strongly in
+ * lightness (safe for colour-blind readers); gold is below 3:1 contrast on white, so every chart ships
+ * a legend + table view.
  */
 
 const SERIES = [
-  { key: "submitted", label: "Submitted to vendor", color: "rgb(var(--accent-500))" },
-  { key: "treated", label: "Treated", color: "rgb(var(--brand-500))" },
+  { key: "submitted", label: "Submitted to vendor", color: "rgb(var(--brand-500))" },
+  { key: "treated", label: "Treated", color: "rgb(var(--ink))" },
 ] as const;
 
 export function DailyColumns({ rows }: { rows: { day: string; submitted: number; treated: number }[] }) {

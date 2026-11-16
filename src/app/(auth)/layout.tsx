@@ -1,15 +1,11 @@
-import { BrandMark } from "@/components/brand";
+import { BrandMark, Emblem } from "@/components/brand";
 import { ShieldCheck, ArrowRightLeft, ClipboardCheck } from "lucide-react";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
       <aside className="relative hidden overflow-hidden bg-brand-900 p-12 text-white lg:flex lg:flex-col lg:justify-between">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 opacity-[0.07]"
-          style={{ backgroundImage: "repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 22px)" }}
-        />
+        <Emblem className="pointer-events-none absolute -bottom-24 -right-24 h-[34rem] w-[34rem] opacity-[0.08]" />
         <BrandMark inverted className="relative" />
         <div className="relative max-w-md">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-accent-500">Operations Platform</p>

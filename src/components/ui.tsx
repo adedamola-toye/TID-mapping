@@ -18,23 +18,23 @@ const STATUS_STYLE: Record<RequestStatus, string> = {
   DRAFT: "bg-surface-sunken text-ink-muted ring-line-strong",
   READY_FOR_REVIEW: "bg-info-50 text-info-700 ring-info-700/20",
   SUBMITTED: "bg-warn-50 text-warn-700 ring-warn-700/25",
-  IN_PROGRESS: "bg-accent-100 text-accent-700 ring-accent-600/30",
+  IN_PROGRESS: "bg-ink/[0.06] text-ink ring-ink/25",
   TREATED: "bg-ok-50 text-ok-700 ring-ok-700/25",
   EXCEPTION: "bg-bad-50 text-bad-700 ring-bad-600/25",
   RETURNED: "bg-bad-50 text-bad-700 ring-bad-600/20",
   CANCELLED: "bg-surface-sunken text-ink-subtle ring-line",
-  CLOSED: "bg-brand-50 text-brand-800 ring-brand-700/20",
+  CLOSED: "bg-brand-50 text-brand-800 ring-brand-600/30",
 };
 const DOT: Record<RequestStatus, string> = {
   DRAFT: "bg-ink-subtle",
   READY_FOR_REVIEW: "bg-info-700",
   SUBMITTED: "bg-warn-700",
-  IN_PROGRESS: "bg-accent-600",
+  IN_PROGRESS: "bg-ink",
   TREATED: "bg-ok-700",
   EXCEPTION: "bg-bad-600",
   RETURNED: "bg-bad-600",
   CANCELLED: "bg-ink-subtle",
-  CLOSED: "bg-brand-700",
+  CLOSED: "bg-brand-500",
 };
 
 export function StatusBadge({ status, vendorView }: { status: RequestStatus; vendorView?: boolean }) {
@@ -50,7 +50,7 @@ export function StatusBadge({ status, vendorView }: { status: RequestStatus; ven
 const TSTYLE: Record<TerminalStatus, string> = {
   AVAILABLE: "bg-surface-sunken text-ink-muted ring-line-strong",
   MAPPING_PENDING: "bg-warn-50 text-warn-700 ring-warn-700/25",
-  REMAPPING_PENDING: "bg-accent-100 text-accent-700 ring-accent-600/30",
+  REMAPPING_PENDING: "bg-ink/[0.06] text-ink ring-ink/25",
   MAPPED: "bg-ok-50 text-ok-700 ring-ok-700/25",
   INACTIVE: "bg-bad-50 text-bad-700 ring-bad-600/20",
 };
@@ -60,7 +60,7 @@ export function TerminalBadge({ status }: { status: TerminalStatus }) {
 
 export function TypeTag({ type }: { type: "MAPPING" | "REMAPPING" }) {
   return (
-    <span className={clsx("inline-flex rounded px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider", type === "MAPPING" ? "bg-brand-50 text-brand-800" : "bg-accent-100 text-accent-700")}>
+    <span className={clsx("inline-flex rounded px-1.5 py-0.5 text-2xs font-semibold uppercase tracking-wider", type === "MAPPING" ? "bg-brand-100 text-brand-800" : "bg-brand-900 text-accent-500")}>
       {type === "MAPPING" ? "Map" : "Remap"}
     </span>
   );

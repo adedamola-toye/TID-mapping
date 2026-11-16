@@ -3,35 +3,36 @@
 @tailwind utilities;
 
 /*
- * Brand tokens — The Alternative Bank / Wakeel.
- * NOTE: values are a considered placeholder (deep ethical green + restrained gold). Replace with the
- * official hex values from the bank's brand guidelines; every component reads these variables.
+ * Brand tokens — The Alternative Bank: black & gold.
+ *  brand-900/800 = black (navigation, primary actions); brand-50…700 = gold scale for highlights,
+ *  links and selection (700 is a deep gold that meets WCAG AA contrast on white);
+ *  accent = the emblem gold (#B6992E) and a brighter gold for use on black.
  */
 :root {
-  --brand-50: 238 246 242;
-  --brand-100: 214 234 224;
-  --brand-200: 170 208 190;
-  --brand-500: 26 128 96;
-  --brand-600: 18 104 78;
-  --brand-700: 13 82 62;
-  --brand-800: 10 62 48;
-  --brand-900: 6 40 31;
+  --brand-50: 251 247 234;
+  --brand-100: 243 233 200;
+  --brand-200: 226 206 140;
+  --brand-500: 182 153 46;
+  --brand-600: 150 124 30;
+  --brand-700: 122 98 18;
+  --brand-800: 24 24 24;
+  --brand-900: 10 10 10;
 
-  --accent-100: 248 239 214;
-  --accent-500: 201 153 46;
-  --accent-600: 176 131 32;
-  --accent-700: 138 101 22;
+  --accent-100: 246 238 212;
+  --accent-500: 200 167 58;
+  --accent-600: 182 153 46;
+  --accent-700: 122 98 18;
 
-  --ink: 20 28 24;
-  --ink-muted: 82 94 88;
-  --ink-subtle: 128 139 133;
+  --ink: 17 17 17;
+  --ink-muted: 87 87 84;
+  --ink-subtle: 130 130 126;
 
   --surface: 255 255 255;
   --surface-raised: 255 255 255;
-  --surface-sunken: 246 247 245;
+  --surface-sunken: 247 246 242;
 
-  --line: 228 231 227;
-  --line-strong: 205 210 205;
+  --line: 231 229 222;
+  --line-strong: 210 207 198;
 
   --ok-50: 233 246 238;
   --ok-700: 22 110 64;
@@ -59,7 +60,7 @@ body {
 
 @layer base {
   h1, h2, h3 { letter-spacing: -0.01em; }
-  :focus-visible { outline: 2px solid rgb(var(--brand-600)); outline-offset: 2px; border-radius: 4px; }
+  :focus-visible { outline: 2px solid rgb(var(--brand-500)); outline-offset: 2px; border-radius: 4px; }
   [hidden] { display: none !important; }
 }
 
@@ -70,7 +71,7 @@ body {
   .input {
     @apply block w-full rounded border border-line-strong bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-subtle
       shadow-[inset_0_1px_1px_rgb(16_24_20/0.03)] transition-colors
-      hover:border-ink-subtle focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20
+      hover:border-ink-subtle focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-500/30
       disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:text-ink-muted;
   }
   .input[aria-invalid="true"] { @apply border-bad-600 focus:ring-bad-600/20; }
@@ -79,7 +80,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded px-3.5 py-2 text-sm font-medium transition-colors
       disabled:cursor-not-allowed disabled:opacity-50;
   }
-  .btn-primary { @apply btn bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900; }
+  .btn-primary { @apply btn bg-brand-900 text-white shadow-[inset_0_-2px_0_rgb(var(--accent-500))] hover:bg-brand-800 active:bg-black; }
   .btn-secondary { @apply btn border border-line-strong bg-surface text-ink hover:bg-surface-sunken; }
   .btn-ghost { @apply btn text-ink-muted hover:bg-surface-sunken hover:text-ink; }
   .btn-danger { @apply btn bg-bad-600 text-white hover:bg-bad-700; }

@@ -183,8 +183,8 @@ export async function buildWorkbook(
       ws.addRow(clean);
     }
     const header = ws.getRow(1);
-    header.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0B3B2E" } };
+    header.font = { bold: true, color: { argb: "FFC8A73A" } };
+    header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0A0A0A" } };
     ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: s.columns.length } };
   }
   if (meta?.title) {
