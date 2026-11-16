@@ -15,7 +15,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test --trace off",
-    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts"
+    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts",
+    "samples": "tsx scripts/make-samples.ts"
   },
   "engines": {
     "node": ">=20.11"

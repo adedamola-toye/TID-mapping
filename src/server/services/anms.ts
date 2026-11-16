@@ -74,6 +74,7 @@ export async function listAnms(opts: { q?: string; includeInactive?: boolean } =
 }
 
 export async function getAnm(id: string) {
+  if (!z.string().uuid().safeParse(id).success) throw notFound("ANM");
   const db = getDb();
   const [a] = await db.select().from(anms).where(eq(anms.id, id));
   if (!a) throw notFound("ANM");

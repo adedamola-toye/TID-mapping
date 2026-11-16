@@ -922,7 +922,7 @@ export async function bulkMarkTreated(actor: Actor, ids: string[], confirm: bool
       await notifyUsers(db, [userId], {
         kind: "REQUEST_TREATED",
         title: `${n} terminal mapping${n === 1 ? " has" : "s have"} been treated by ${vendorName}`,
-        link: "/requests?status=TREATED",
+        link: "/requests?view=treated",
       });
     }
   }

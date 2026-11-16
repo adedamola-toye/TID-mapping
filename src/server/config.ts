@@ -47,7 +47,9 @@ export function config(): AppConfig {
   }
   const c = parsed.data;
   if (c.NODE_ENV === "production") {
-    if (!c.SECURE_COOKIES) throw new Error("SECURE_COOKIES must be true in production.");
+    // Plain-HTTP cookies are only tolerated for a production build served on localhost (CI / e2e).
+    const local = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(c.APP_URL);
+    if (!c.SECURE_COOKIES && !local) throw new Error("SECURE_COOKIES must be true in production.");
     if (c.EMAIL_TRANSPORT === "console")
       throw new Error("EMAIL_TRANSPORT=console is not allowed in production (would log reset links).");
   }
