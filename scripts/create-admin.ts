@@ -33,7 +33,18 @@ async function main() {
     .returning();
   await writeAudit(db, { id: null, email: "system/bootstrap", role: "SYSTEM" }, { action: "USER_CREATED", entityType: "user", entityId: u.id, entityLabel: email, newValue: { role: "SUPER_ADMIN" } });
   const token = await createResetToken(u.id, null);
-  console.log(`Super Admin created. Set the password within 30 minutes:\n${config().APP_URL}/reset-password#token=${token}`);
+  const link = `${config().APP_URL}/reset-password#token=${token}`;
+  const { notifyEmail } = await import("../src/server/notifications");
+  const emailSent = await notifyEmail({
+    to: email,
+    subject: "Your Wakeel Terminal Mapping admin account is ready",
+    text: `A Super Admin account has been created for you on the Wakeel POS Terminal Mapping platform.\n\nSet your password within 30 minutes using this link:\n${link}\n\nIf you were not expecting this, please contact the platform administrator.`,
+  });
+  console.log(
+    emailSent
+      ? `Super Admin created. Setup link emailed to ${email}. It also expires in 30 minutes:\n${link}`
+      : `Super Admin created, but the email could not be sent. Share this link (valid 30 minutes):\n${link}`,
+  );
   await closeDb();
 }
 

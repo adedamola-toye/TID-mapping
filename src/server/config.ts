@@ -28,10 +28,17 @@ const schema = z.object({
     .transform((v) => (v && v.trim() ? v.trim() : null))
     .refine((v) => v === null || /^(\d{3}|\d{6})$/.test(v), "must be 3 or 6 digits"),
   TID_PATTERN: z.string().optional().transform((v) => (v && v.trim() ? v.trim() : DEFAULT_TID_PATTERN)),
-  EMAIL_TRANSPORT: z.enum(["none", "console"]).default("none"),
+  EMAIL_TRANSPORT: z.enum(["none", "console", "resend"]).default("none"),
+  RESEND_API_KEY: z.string().trim().optional(),
+  MAIL_FROM: z.string().trim().optional(),
   IMPORT_MAX_BYTES: z.coerce.number().int().min(10_000).max(50_000_000).default(5_242_880),
   IMPORT_MAX_ROWS: z.coerce.number().int().min(10).max(100_000).default(10_000),
   TRUST_PROXY: bool,
+}).superRefine((c, ctx) => {
+  if (c.EMAIL_TRANSPORT === "resend") {
+    if (!c.RESEND_API_KEY) ctx.addIssue({ code: "custom", path: ["RESEND_API_KEY"], message: "is required when EMAIL_TRANSPORT=resend" });
+    if (!c.MAIL_FROM) ctx.addIssue({ code: "custom", path: ["MAIL_FROM"], message: "is required when EMAIL_TRANSPORT=resend" });
+  }
 });
 
 export type AppConfig = z.infer<typeof schema>;

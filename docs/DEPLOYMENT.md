@@ -15,7 +15,9 @@
 | `NUBAN_BANK_CODE` | | 3- or 6-digit CBN code to enforce the NUBAN check digit |
 | `TID_PATTERN` | | regex for TIDs (default `^[A-Z0-9]{8}$`) |
 | `DEFAULT_VENDOR_CODE` | | vendor that new requests route to (default `ELNEXU`) |
-| `EMAIL_TRANSPORT` | | `none` (default) or `console` (development only; blocked in production) |
+| `EMAIL_TRANSPORT` | | `none` (default), `console` (development only; blocked in production) or `resend` |
+| `RESEND_API_KEY` | ✔ with resend | Resend API key (send-only keys are fine) |
+| `MAIL_FROM` | ✔ with resend | Verified sender, e.g. `Wakeel <no-reply@wakeelfo.ng>` |
 | `IMPORT_MAX_BYTES` / `IMPORT_MAX_ROWS` | | default 5 MB / 10,000 |
 | `TRUST_PROXY` | | `true` only behind a trusted reverse proxy (client IP for audit/throttling) |
 | `DB_POOL_MAX` | | connection pool size per instance (default 10) |

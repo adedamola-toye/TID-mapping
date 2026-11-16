@@ -83,12 +83,39 @@ export async function markNotificationsRead(userId: string, ids: string[] | "all
   await db.update(notifications).set({ readAt: new Date() }).where(where);
 }
 
-/** Email channel used for account messages (password reset). */
-export async function notifyEmail(msg: { to: string; subject: string; text: string }): Promise<void> {
-  const transport = config().EMAIL_TRANSPORT;
-  if (transport === "console") {
+/**
+ * Email channel used for account messages (password reset / account setup).
+ * Returns true when the message was handed off to the configured transport.
+ * Failures are logged, never thrown, so they cannot break the business action.
+ */
+export async function notifyEmail(msg: { to: string; subject: string; text: string }): Promise<boolean> {
+  const c = config();
+  if (c.EMAIL_TRANSPORT === "console") {
     // Development only (blocked in production by config validation).
     console.info(`\n[email:console] To: ${msg.to}\nSubject: ${msg.subject}\n${msg.text}\n`);
+    return true;
   }
-  // "none": email delivery not configured — integrate SMTP/provider here.
+  if (c.EMAIL_TRANSPORT === "resend") {
+    try {
+      const { Resend } = await import("resend");
+      const resend = new Resend(c.RESEND_API_KEY);
+      const { error } = await resend.emails.send({
+        from: c.MAIL_FROM!,
+        to: msg.to,
+        subject: msg.subject,
+        text: msg.text,
+        html: `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.6;color:#111"><p>${msg.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br>")}</p></div>`,
+      });
+      if (error) {
+        console.error("[email:resend] send failed:", error.message);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error("[email:resend] send failed:", (e as Error)?.message ?? e);
+      return false;
+    }
+  }
+  // "none": email delivery not configured.
+  return false;
 }

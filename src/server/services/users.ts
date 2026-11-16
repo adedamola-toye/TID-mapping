@@ -11,6 +11,7 @@ import { hashPassword } from "../auth/password";
 import { createResetToken, revokeAllSessions } from "../auth/service";
 import { randomToken } from "../crypto";
 import { config } from "../config";
+import { notifyEmail } from "../notifications";
 import { ROLES } from "@/lib/constants";
 import { fieldErrors } from "@/lib/validation";
 
@@ -93,7 +94,13 @@ export async function createUser(actor: Actor, input: unknown) {
       return u;
     });
     const token = await createResetToken(user.id, actor.id);
-    return { user: { id: user.id, email: user.email }, setPasswordLink: `${config().APP_URL}/reset-password#token=${token}` };
+    const setPasswordLink = `${config().APP_URL}/reset-password#token=${token}`;
+    const emailSent = await notifyEmail({
+      to: user.email,
+      subject: "Your Wakeel Terminal Mapping account is ready",
+      text: `An account has been created for you on the Wakeel POS Terminal Mapping platform.\n\nSet your password within 30 minutes using this link:\n${setPasswordLink}\n\nIf you were not expecting this, please contact your administrator.`,
+    });
+    return { user: { id: user.id, email: user.email }, setPasswordLink, emailSent };
   } catch (e) {
     throw fromDbError(e) ?? e;
   }
@@ -154,7 +161,13 @@ export async function adminResetPassword(actor: Actor, id: string) {
     await revokeAllSessions(id, tx);
     await writeAudit(tx, actor, { action: "USER_PASSWORD_RESET_ISSUED", entityType: "user", entityId: id, entityLabel: u.email });
   });
-  return { link: `${config().APP_URL}/reset-password#token=${token}` };
+  const link = `${config().APP_URL}/reset-password#token=${token}`;
+  const emailSent = await notifyEmail({
+    to: u.email,
+    subject: "Reset your Wakeel Terminal Mapping password",
+    text: `A password reset was issued for your account by an administrator.\n\nSet a new password within 30 minutes using this link:\n${link}\n\nIf you were not expecting this, please contact your administrator.`,
+  });
+  return { link, emailSent };
 }
 
 export async function unlockUser(actor: Actor, id: string) {

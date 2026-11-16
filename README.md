@@ -39,7 +39,7 @@ The application is the **system of record**. Spreadsheets are an import/export f
 | **Dashboard & reports** | Totals, pending, with vendor, exceptions, outstanding, today's activity, vendor performance (avg/P90 treatment time, exception rate), by ANM/state, daily report, outstanding ageing, ANM, location, activity and single-terminal history. All exportable to Excel. |
 | **Audit** | Every significant action (logins, creates, edits, submissions, vendor opens/copies/treatments, exceptions, remaps, admin changes, exports, account reveals) with user, role, record, old/new values, timestamp, IP and device. Append-only (DB triggers) and SHA-256 hash-chained with an in-app integrity check. |
 | **Security** | scrypt passwords, opaque server-side sessions (idle + absolute timeout), lockout and throttling, CSRF tokens + origin checks, strict nonce-based CSP, RBAC enforced server-side on every call, vendor scoping (no IDOR), AES-256-GCM encryption of account numbers at rest, masked display, audited reveal, optional TOTP 2-step verification. |
-| **Notifications** | In-app notifications (vendor: new requests/amendments; internal: treated, exceptions, returns) behind a channel interface ready for email/SMS/WhatsApp. |
+| **Notifications** | In-app notifications (vendor: new requests/amendments; internal: treated, exceptions, returns) plus transactional email via Resend (account setup and password reset) behind a channel interface ready for SMS/WhatsApp. |
 
 ## Quick start (development)
 
@@ -138,7 +138,7 @@ See [docs/TESTING.md](docs/TESTING.md) for the manual UAT checklist.
 
 ## Known limitations
 
-- **Email/SMS/WhatsApp delivery** is not wired to a provider. In-app notifications are complete; the channel interface (`registerChannel`) and the password-reset email hook are ready. Until email is connected, administrators issue one-time password links from the Users page.
+- **SMS/WhatsApp delivery** is not wired to a provider. In-app notifications are complete and transactional email is delivered through Resend (`EMAIL_TRANSPORT=resend`): account-setup links are emailed when an administrator creates a user, and the "Forgot password" flow emails a reset link. Administrators can still issue/copy one-time links from the Users page as a fallback.
 - **Rate limiting** is in-memory per instance. For multi-instance deployments, add a shared limiter (gateway/WAF or Redis). Account lockout is database-backed and works across instances.
 - **Large imports** run in the request (validated up to 10,000 rows / 5 MB; 2,000 rows import in a few seconds in tests). Very large files should be split; a background job queue would be the next step if volumes grow.
 - **MFA** is TOTP (authenticator app) and optional; making it mandatory for privileged roles is a one-line policy change once the bank decides.

@@ -29,7 +29,7 @@ export function UserManager({ users, vendors, selfId }: { users: U[]; vendors: {
   const [q, setQ] = useState("");
   const [roleF, setRoleF] = useState("");
   const [edit, setEdit] = useState<null | { id: string | null; email: string; fullName: string; role: Role; vendorId: string; isActive: boolean }>(null);
-  const [link, setLink] = useState<{ title: string; url: string } | null>(null);
+  const [link, setLink] = useState<{ title: string; url: string; emailed: boolean } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -47,8 +47,9 @@ export function UserManager({ users, vendors, selfId }: { users: U[]; vendors: {
         await api(`/api/users/${edit.id}`, { method: "PATCH", body });
         toast.push("ok", "User updated.");
       } else {
-        const r = await api<{ setPasswordLink: string }>("/api/users", { body });
-        setLink({ title: `Account created for ${edit.email}`, url: r.setPasswordLink });
+        const r = await api<{ setPasswordLink: string; emailSent: boolean }>("/api/users", { body });
+        setLink({ title: `Account created for ${edit.email}`, url: r.setPasswordLink, emailed: r.emailSent });
+        toast.push(r.emailSent ? "ok" : "bad", r.emailSent ? "Setup email sent." : "Account created, but the email could not be sent.");
       }
       setEdit(null);
       router.refresh();
@@ -64,8 +65,8 @@ export function UserManager({ users, vendors, selfId }: { users: U[]; vendors: {
 
   async function op(u: U, opName: "reset-password" | "unlock" | "reset-mfa") {
     try {
-      const r = await api<{ link?: string }>(`/api/users/${u.id}`, { body: { op: opName } });
-      if (r.link) setLink({ title: `Password reset issued for ${u.email}`, url: r.link });
+      const r = await api<{ link?: string; emailSent?: boolean }>(`/api/users/${u.id}`, { body: { op: opName } });
+      if (r.link) setLink({ title: `Password reset issued for ${u.email}`, url: r.link, emailed: r.emailSent ?? false });
       else toast.push("ok", opName === "unlock" ? "Account unlocked." : "Two-step verification reset.");
       router.refresh();
     } catch (e) {
@@ -142,14 +143,18 @@ export function UserManager({ users, vendors, selfId }: { users: U[]; vendors: {
             {edit.id && edit.id !== selfId && (
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="accent-brand-700" checked={edit.isActive} onChange={(e) => setEdit({ ...edit, isActive: e.target.checked })} />Account active</label>
             )}
-            {!edit.id && <p className="text-xs text-ink-subtle">No password is set by the administrator. You will receive a one-time link (valid 30 minutes) for the user to set their own password.</p>}
+            {!edit.id && <p className="text-xs text-ink-subtle">No password is set by the administrator. A one-time setup link (valid 30 minutes) is emailed to the user so they can choose their own password. You can also copy the link afterward as a fallback.</p>}
             {edit.id && <p className="text-xs text-ink-subtle">Changing role, vendor or status signs the user out of all sessions.</p>}
           </div>
         )}
       </Modal>
 
       <Modal open={!!link} onClose={() => setLink(null)} title={link?.title ?? ""} footer={<button className="btn-primary" onClick={() => setLink(null)}>Done</button>}>
-        <p className="text-sm text-ink-muted">Share this one-time link with the user through an approved internal channel. It expires in 30 minutes and works once.</p>
+        <p className="text-sm text-ink-muted">
+          {link?.emailed
+            ? "An email with this one-time link has been sent to the user. It expires in 30 minutes and works once. You can also share the link below as a fallback."
+            : "The email could not be sent. Share this one-time link with the user through an approved internal channel. It expires in 30 minutes and works once."}
+        </p>
         <div className="mt-3 flex gap-2">
           <input readOnly className="input ident text-xs" value={link?.url ?? ""} aria-label="One-time link" onFocus={(e) => e.target.select()} />
           <button className="btn-secondary" onClick={() => link && copyText(link.url).then(() => toast.push("ok", "Link copied."))}><Copy className="h-4 w-4" aria-hidden />Copy</button>
