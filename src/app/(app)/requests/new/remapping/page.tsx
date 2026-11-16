@@ -3,11 +3,12 @@ import { requirePage } from "@/server/http";
 import { listActiveAnms } from "@/server/services/anms";
 import { can } from "@/server/rbac";
 import { RemapWizard } from "./RemapWizard";
+import { getRegionMap } from "@/server/services/regions";
 
 export const metadata: Metadata = { title: "New Remapping" };
 
 export default async function NewRemappingPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const { actor } = await requirePage("request:create");
   const sp = await searchParams;
-  return <RemapWizard anms={await listActiveAnms()} canSubmitToVendor={can(actor.role, "request:submit_vendor")} initialIdentifier={sp.terminal?.slice(0, 40) ?? ""} />;
+  return <RemapWizard anms={await listActiveAnms()} regions={await getRegionMap()} canSubmitToVendor={can(actor.role, "request:submit_vendor")} initialIdentifier={sp.terminal?.slice(0, 40) ?? ""} />;
 }

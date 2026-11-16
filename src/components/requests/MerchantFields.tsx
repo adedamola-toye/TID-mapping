@@ -1,7 +1,8 @@
 "use client";
 
 import { Field } from "@/components/ui";
-import { NIGERIAN_STATES, PRIORITIES } from "@/lib/constants";
+import { PRIORITIES, type Region, type RegionMap } from "@/lib/constants";
+import { RegionStatePicker } from "@/components/RegionStatePicker";
 
 export interface Anm {
   id: string;
@@ -14,6 +15,8 @@ export interface MerchantValues {
   agentName: string;
   accountNumber: string;
   state: string;
+  /** UI-only: the bank used to drill down to the state (not sent to the server). */
+  region?: Region | "";
   area: string;
   anmId: string;
   priority: string;
@@ -27,14 +30,17 @@ export function MerchantFields({
   set,
   errors,
   anms,
+  regions,
   showComment = true,
 }: {
   v: MerchantValues;
   set: (patch: Partial<MerchantValues>) => void;
   errors: Record<string, string>;
   anms: Anm[];
+  regions: RegionMap;
   showComment?: boolean;
 }) {
+  const region: Region | "" = v.region || (v.state && regions[v.state]) || "";
   // ANMs covering the selected state first — still a controlled list, never free text.
   const covering = v.state ? anms.filter((a) => a.regions.includes(v.state)) : [];
   const others = anms.filter((a) => !covering.includes(a));
@@ -45,18 +51,9 @@ export function MerchantFields({
           {(p) => <input {...p} className="input" maxLength={150} autoComplete="off" value={v.agentName} onChange={(e) => set({ agentName: e.target.value })} placeholder="e.g. TANTA DYNAMIC ENTERPRISE" />}
         </Field>
       </div>
-      <Field label="Account number" required error={errors.accountNumber} hint="10-digit NUBAN">
-        {(p) => (
-          <input
-            {...p}
-            className="input ident"
-            inputMode="numeric"
-            autoComplete="off"
-            maxLength={10}
-            value={v.accountNumber}
-            onChange={(e) => set({ accountNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
-          />
-        )}
+      <RegionStatePicker regions={regions} region={region} state={v.state} onChange={(x) => set({ region: x.region, state: x.state })} stateError={errors.state} required />
+      <Field label="Area / LGA" error={errors.area} hint="Optional — town, LGA or market">
+        {(p) => <input {...p} className="input" maxLength={120} value={v.area} onChange={(e) => set({ area: e.target.value })} />}
       </Field>
       <Field label="ANM" required error={errors.anmId} hint={v.state && covering.length ? `${covering.length} ANM(s) cover ${v.state}` : "Select from the approved ANM list"}>
         {(p) => (
@@ -73,16 +70,18 @@ export function MerchantFields({
           </select>
         )}
       </Field>
-      <Field label="Location (state)" required error={errors.state}>
+      <Field label="Account number" required error={errors.accountNumber} hint="10-digit NUBAN">
         {(p) => (
-          <select {...p} className="input" value={v.state} onChange={(e) => set({ state: e.target.value })}>
-            <option value="">Select state…</option>
-            {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-          </select>
+          <input
+            {...p}
+            className="input ident"
+            inputMode="numeric"
+            autoComplete="off"
+            maxLength={10}
+            value={v.accountNumber}
+            onChange={(e) => set({ accountNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })}
+          />
         )}
-      </Field>
-      <Field label="Area / LGA" error={errors.area} hint="Optional — town, LGA or market">
-        {(p) => <input {...p} className="input" maxLength={120} value={v.area} onChange={(e) => set({ area: e.target.value })} />}
       </Field>
       <Field label="Priority" error={errors.priority}>
         {(p) => (

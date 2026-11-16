@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { requirePage } from "@/server/http";
 import { PageHeader } from "@/components/ui";
+import { getRegionMap } from "@/server/services/regions";
 import { RequestsTable, type TabDef } from "@/components/requests/RequestsTable";
 
 export const metadata: Metadata = { title: "My Submissions" };
@@ -28,7 +29,8 @@ export default async function MyRequestsPage() {
           </>
         }
       />
-      <RequestsTable mode="mine" tabs={TABS} initialTab="open" />
+      <RequestsTable
+        regions={await getRegionMap()} mode="mine" tabs={TABS} initialTab="open" />
     </>
   );
 }

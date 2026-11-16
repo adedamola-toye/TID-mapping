@@ -4,6 +4,7 @@ import { requirePage } from "@/server/http";
 import { listActiveAnms } from "@/server/services/anms";
 import { can } from "@/server/rbac";
 import { PageHeader } from "@/components/ui";
+import { getRegionMap } from "@/server/services/regions";
 import { RequestsTable, type TabDef } from "@/components/requests/RequestsTable";
 
 export const metadata: Metadata = { title: "Requests" };
@@ -48,6 +49,7 @@ export default async function RequestsPage({ searchParams }: { searchParams: Pro
         }
       />
       <RequestsTable
+        regions={await getRegionMap()}
         key={`${type}-${initial}`}
         mode="internal"
         tabs={tabs}

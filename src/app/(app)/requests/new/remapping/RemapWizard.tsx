@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowRight, CheckCircle2, Lock, Search } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { Alert, Card, Field, KV, PageHeader, Spinner, TerminalBadge } from "@/components/ui";
+import type { RegionMap } from "@/lib/constants";
 import { MerchantFields, emptyMerchant, type Anm, type MerchantValues } from "@/components/requests/MerchantFields";
 import { fieldErrors, remappingInputSchema } from "@/lib/validation";
 import { fmtDate, maskAccount } from "@/lib/format";
@@ -17,7 +18,7 @@ interface Lookup {
   blocker: string | null;
 }
 
-export function RemapWizard({ anms, canSubmitToVendor, initialIdentifier }: { anms: Anm[]; canSubmitToVendor: boolean; initialIdentifier: string }) {
+export function RemapWizard({ anms, canSubmitToVendor, initialIdentifier, regions }: { anms: Anm[]; canSubmitToVendor: boolean; initialIdentifier: string; regions: RegionMap }) {
   const [ident, setIdent] = useState(initialIdentifier);
   const [lookup, setLookup] = useState<Lookup | null>(null);
   const [lookupErr, setLookupErr] = useState<string | null>(null);
@@ -155,7 +156,7 @@ export function RemapWizard({ anms, canSubmitToVendor, initialIdentifier }: { an
           </Card>
           <div className="space-y-6">
             <Card title="2 · New mapping">
-              <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} />
+              <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} regions={regions} />
               <div className="mt-5">
                 <Field label="Reason for remapping" required error={errors.reason}>
                   {(p) => <input {...p} className="input" maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Agent relocated to a new outlet" />}

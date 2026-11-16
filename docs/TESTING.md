@@ -39,7 +39,8 @@ Use the seeded development accounts (password `Wakeel#Dev2026!`).
 9. **Concurrency:** in two browsers, start a remapping for the same terminal; the second submission is refused with "already has a pending remapping request".
 10. **Audit (superadmin):** Audit Logs → search by request ID; expand entries to see old/new values; *Verify integrity*.
 11. **Reports:** each tab loads; *Export to Excel* downloads a workbook; *Terminal history* finds a terminal.
-12. **Security spot-checks:** sign out and press Back (no data shown); wait past idle timeout (warning then sign-out); 6 wrong passwords lock the account; vendor URL-guessing an internal request ID shows "not found".
+12. **North/South Bank:** as superadmin open *Administration → Regions*, move a state (e.g. Kwara) to South Bank and save. As operations, New Mapping → choose *South Bank* and confirm the state list now includes Kwara; filter the Mapping Queue and Terminals by bank; open *Reports → Location (N/S Bank)* and click a bank card to drill down. Check the audit log shows `REGIONS_UPDATED` with old/new bank.
+13. **Security spot-checks:** sign out and press Back (no data shown); wait past idle timeout (warning then sign-out); 6 wrong passwords lock the account; vendor URL-guessing an internal request ID shows "not found".
 
 ## Product review against §53 of the brief
 

@@ -30,6 +30,7 @@ export const PERMISSIONS = [
   "vendor:manage",
   "audit:view",
   "config:view",
+  "region:manage",             // assign states to North Bank / South Bank
 ] as const;
 export type Permission = (typeof PERMISSIONS)[number];
 
@@ -92,4 +93,5 @@ export const PERMISSION_DESCRIPTIONS: Record<Permission, string> = {
   "vendor:manage": "Manage vendors",
   "audit:view": "View audit logs",
   "config:view": "View system configuration",
+  "region:manage": "Assign states to North Bank / South Bank",
 };

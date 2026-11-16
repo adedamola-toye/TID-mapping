@@ -6,7 +6,8 @@ import { ArrowDown, ArrowUp, Columns3, Download, Filter, Search, X } from "lucid
 import { api, ApiError, download } from "@/lib/client/api";
 import { EmptyState, Modal, Pagination, PriorityTag, Spinner, StatusBadge, Tabs, TypeTag, clsx } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { NIGERIAN_STATES, PRIORITIES, REQUEST_STATUSES, STATUS_LABELS, type RequestStatus } from "@/lib/constants";
+import { PRIORITIES, REQUEST_STATUSES, STATUS_LABELS, type Region, type RegionMap, type RequestStatus } from "@/lib/constants";
+import { RegionStatePicker } from "@/components/RegionStatePicker";
 import { fmtDateTime } from "@/lib/format";
 
 export interface Row {
@@ -76,14 +77,15 @@ interface Props {
   bulkActions?: ("submit" | "close" | "start" | "treat")[];
   fixedType?: "MAPPING" | "REMAPPING";
   batchId?: string;
+  regions: RegionMap;
 }
 
-export function RequestsTable({ mode, tabs, initialTab, anms = [], canExport, canExportFull, bulkActions = [], fixedType, batchId }: Props) {
+export function RequestsTable({ mode, tabs, initialTab, anms = [], canExport, canExportFull, bulkActions = [], fixedType, batchId, regions }: Props) {
   const toast = useToast();
   const [tab, setTab] = useState(initialTab);
   const [q, setQ] = useState("");
   const [qDebounced, setQDebounced] = useState("");
-  const [filters, setFilters] = useState<{ accountNumber?: string; state?: string; anmId?: string; type?: string; priority?: string; dateFrom?: string; dateTo?: string; dateField?: string; status?: RequestStatus[] }>({});
+  const [filters, setFilters] = useState<{ accountNumber?: string; region?: Region; state?: string; anmId?: string; type?: string; priority?: string; dateFrom?: string; dateTo?: string; dateField?: string; status?: RequestStatus[] }>({});
   const [showFilters, setShowFilters] = useState(false);
   const [sort, setSort] = useState<{ sort: string; dir: "asc" | "desc" }>({ sort: mode === "vendor" ? "submittedAt" : "createdAt", dir: mode === "vendor" ? "asc" : "desc" });
   const [page, setPage] = useState(1);
@@ -317,13 +319,13 @@ export function RequestsTable({ mode, tabs, initialTab, anms = [], canExport, ca
             <span className="label">Account number</span>
             <input className="input" inputMode="numeric" autoComplete="off" placeholder="10 digits or last 4" value={filters.accountNumber ?? ""} onChange={(e) => setFilters({ ...filters, accountNumber: e.target.value.replace(/\D/g, "").slice(0, 10) })} />
           </label>
-          <label className="text-xs">
-            <span className="label">Location</span>
-            <select className="input" value={filters.state ?? ""} onChange={(e) => setFilters({ ...filters, state: e.target.value || undefined })}>
-              <option value="">All states</option>
-              {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-            </select>
-          </label>
+          <RegionStatePicker
+            mode="filter"
+            regions={regions}
+            region={filters.region ?? ""}
+            state={filters.state ?? ""}
+            onChange={(x) => setFilters({ ...filters, region: x.region || undefined, state: x.state || undefined })}
+          />
           {anms.length > 0 && (
             <label className="text-xs">
               <span className="label">ANM</span>

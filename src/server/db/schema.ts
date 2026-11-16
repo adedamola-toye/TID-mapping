@@ -26,6 +26,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 import {
+  REGIONS,
   EXCEPTION_REASONS,
   IMPORT_KINDS,
   PRIORITIES,
@@ -42,6 +43,7 @@ export const priorityEnum = pgEnum("request_priority", PRIORITIES);
 export const exceptionReasonEnum = pgEnum("exception_reason", EXCEPTION_REASONS);
 export const terminalStatusEnum = pgEnum("terminal_status", TERMINAL_STATUSES);
 export const importKindEnum = pgEnum("import_kind", IMPORT_KINDS);
+export const regionEnum = pgEnum("region", REGIONS);
 export const importBatchStatusEnum = pgEnum("import_batch_status", [
   "UPLOADED",
   "VALIDATED",
@@ -226,6 +228,14 @@ export const terminalMappings = pgTable(
     index("terminal_mappings_state_idx").on(t.state),
   ],
 );
+
+/** Admin-managed assignment of each state to North Bank / South Bank. */
+export const stateRegions = pgTable("state_regions", {
+  state: varchar("state", { length: 40 }).primaryKey(),
+  region: regionEnum("region").notNull(),
+  updatedBy: uuid("updated_by").references(() => users.id),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
 
 /* ───────────────────────────── Workflow ───────────────────────────── */
 

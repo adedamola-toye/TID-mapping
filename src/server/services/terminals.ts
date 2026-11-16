@@ -9,7 +9,8 @@ import { writeAudit } from "../audit";
 import { hmac } from "../crypto";
 import type { Actor } from "../actor";
 import { can } from "../rbac";
-import { OPEN_STATUSES, TERMINAL_STATUSES, normalizeState } from "@/lib/constants";
+import { OPEN_STATUSES, REGIONS, TERMINAL_STATUSES, normalizeState } from "@/lib/constants";
+import { stateInRegion } from "./regions";
 import { maskAccount } from "@/lib/format";
 import { fieldErrors, normalizeAccount, normalizeIdentifier, optionalTidSchema } from "@/lib/validation";
 
@@ -22,6 +23,7 @@ export const terminalSearchSchema = z.object({
   accountNumber: z.string().max(20).optional(),
   status: z.array(z.enum(TERMINAL_STATUSES)).max(5).optional(),
   state: z.string().max(40).optional(),
+  region: z.enum(REGIONS).optional(),
   anmId: z.string().uuid().optional(),
   remapped: z.boolean().optional(),
   sort: z.enum(["serialNumber", "tid", "agentName", "state", "anmName", "mappedAt", "lastRemappedAt", "createdAt", "status"]).default("createdAt"),
@@ -49,6 +51,7 @@ export function terminalFilters(f: z.infer<typeof terminalSearchSchema>): SQL[] 
   }
   if (f.status?.length) conds.push(inArray(terminals.status, f.status));
   if (f.state) conds.push(eq(cm.state, f.state));
+  if (f.region) conds.push(stateInRegion(cm.state, f.region));
   if (f.anmId) conds.push(eq(cm.anmId, f.anmId));
   if (f.remapped === true) conds.push(sql`${terminals.lastRemappedAt} is not null`);
   return conds;

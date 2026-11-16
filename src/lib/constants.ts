@@ -125,6 +125,20 @@ export const NIGERIAN_STATES = [
 ] as const;
 export type NigerianState = (typeof NIGERIAN_STATES)[number];
 
+/**
+ * Wakeel operating regions ("banks" of the Niger/Benue). The state → bank assignment is
+ * administrator-managed (Administration → Regions); these are only the initial defaults.
+ */
+export const REGIONS = ["NORTH_BANK", "SOUTH_BANK"] as const;
+export type Region = (typeof REGIONS)[number];
+export const REGION_LABELS: Record<Region, string> = { NORTH_BANK: "North Bank", SOUTH_BANK: "South Bank" };
+export const DEFAULT_NORTH_BANK: NigerianState[] = [
+  "Adamawa", "Bauchi", "Benue", "Borno", "FCT", "Gombe", "Jigawa", "Kaduna", "Kano", "Katsina",
+  "Kebbi", "Kogi", "Kwara", "Nasarawa", "Niger", "Plateau", "Sokoto", "Taraba", "Yobe", "Zamfara",
+];
+/** state → region (null = not yet assigned). Sent from server to client components. */
+export type RegionMap = Record<string, Region | null>;
+
 const STATE_ALIASES: Record<string, NigerianState> = {
   abuja: "FCT",
   "federal capital territory": "FCT",

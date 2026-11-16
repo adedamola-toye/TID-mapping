@@ -100,7 +100,20 @@ export default async function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <Card title="Mapped terminals by ANM"><HBars rows={d.byAnm.map((x) => ({ label: x.label, n: x.n }))} /></Card>
-        <Card title="Mapped terminals by state"><HBars rows={d.byState.map((x) => ({ label: x.label, n: x.n }))} /></Card>
+        <Card title="Mapped terminals by state" actions={<Link href="/reports?tab=location" className="text-xs text-brand-700 hover:underline">By bank →</Link>}>
+          {d.byRegion.length > 0 && (
+            <div className="mb-5 grid grid-cols-2 gap-3">
+              {d.byRegion.map((b) => (
+                <div key={b.region} className="rounded border border-line p-3">
+                  <div className="text-xs font-medium text-ink-muted">{b.label}</div>
+                  <div className="num mt-0.5 text-xl font-semibold">{fmtNumber(b.mapped)}</div>
+                  <div className="text-2xs text-ink-subtle">{fmtNumber(b.outstanding)} outstanding · {fmtNumber(b.exceptions)} exceptions</div>
+                </div>
+              ))}
+            </div>
+          )}
+          <HBars rows={d.byState.map((x) => ({ label: x.label, n: x.n }))} />
+        </Card>
         <Card title="Recent treatments" bodyClass="p-0" actions={<Link href="/requests?view=treated" className="text-xs text-brand-700 hover:underline">View all</Link>}>
           {d.recentTreatments.length === 0 ? (
             <p className="px-5 py-8 text-center text-sm text-ink-muted">No treatments yet.</p>

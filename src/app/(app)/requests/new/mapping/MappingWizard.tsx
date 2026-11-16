@@ -5,13 +5,14 @@ import { useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { Alert, Card, Field, KV, PageHeader, Spinner, clsx } from "@/components/ui";
+import type { RegionMap } from "@/lib/constants";
 import { MerchantFields, emptyMerchant, type Anm, type MerchantValues } from "@/components/requests/MerchantFields";
 import { fieldErrors, mappingInputSchema } from "@/lib/validation";
 import { maskAccount } from "@/lib/format";
 
 type Step = "capture" | "review" | "done";
 
-export function MappingWizard({ anms, canSubmitToVendor }: { anms: Anm[]; canSubmitToVendor: boolean }) {
+export function MappingWizard({ anms, canSubmitToVendor, regions }: { anms: Anm[]; canSubmitToVendor: boolean; regions: RegionMap }) {
   const [step, setStep] = useState<Step>("capture");
   const [t, setT] = useState({ serialNumber: "", tid: "", iswTid: "" });
   const [m, setM] = useState<MerchantValues>(emptyMerchant);
@@ -152,7 +153,7 @@ export function MappingWizard({ anms, canSubmitToVendor }: { anms: Anm[]; canSub
             )}
           </Card>
           <Card title="Agent / merchant">
-            <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} />
+            <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} regions={regions} />
           </Card>
           <div className="flex flex-wrap justify-end gap-2">
             <button type="button" className="btn-ghost" disabled={busy} onClick={() => validate() && create("draft")}>Save as draft</button>

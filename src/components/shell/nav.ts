@@ -54,6 +54,7 @@ export const NAV: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: "UserCog", perm: "user:manage" },
       { href: "/admin/vendors", label: "Vendors", icon: "Building2", perm: "vendor:manage" },
+      { href: "/admin/regions", label: "Regions (N/S Bank)", icon: "Map", perm: "region:manage" },
       { href: "/admin/roles", label: "Roles & Permissions", icon: "KeyRound", perm: "user:manage" },
       { href: "/admin/audit", label: "Audit Logs", icon: "ScrollText", perm: "audit:view" },
       { href: "/admin/settings", label: "System Configuration", icon: "Settings", perm: "config:view" },

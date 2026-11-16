@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api, ApiError } from "@/lib/client/api";
 import { Alert, Card, Field, PageHeader, Spinner } from "@/components/ui";
+import type { RegionMap } from "@/lib/constants";
 import { MerchantFields, type Anm, type MerchantValues } from "@/components/requests/MerchantFields";
 import { useToast } from "@/components/toast";
 
@@ -25,7 +26,7 @@ interface R {
   internalComment: string | null;
 }
 
-export function EditForm({ r, anms }: { r: R; anms: Anm[] }) {
+export function EditForm({ r, anms, regions }: { r: R; anms: Anm[]; regions: RegionMap }) {
   const router = useRouter();
   const toast = useToast();
   const [m, setM] = useState<MerchantValues>({
@@ -93,7 +94,7 @@ export function EditForm({ r, anms }: { r: R; anms: Anm[] }) {
         </div>
       </Card>
       <Card title="Agent / merchant">
-        <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} />
+        <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} regions={regions} />
       </Card>
       {amend && (
         <Card title="Amendment reason">

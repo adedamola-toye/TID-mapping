@@ -5,7 +5,7 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   LayoutDashboard, ListChecks, CheckCircle2, AlertTriangle, Inbox, PlusSquare, History, ArrowRightLeft, Send,
-  FileSpreadsheet, CreditCard, Users, BarChart3, UserCog, Building2, KeyRound, ScrollText, Settings, Circle,
+  FileSpreadsheet, CreditCard, Users, BarChart3, UserCog, Building2, KeyRound, ScrollText, Settings, Circle, Map as MapIcon,
   Menu, ChevronDown, UserRound, LogOut, Bell,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -24,7 +24,7 @@ interface ShellUser {
 
 const ICONS: Record<string, React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>> = {
   LayoutDashboard, ListChecks, CheckCircle2, AlertTriangle, Inbox, PlusSquare, History, ArrowRightLeft, Send,
-  FileSpreadsheet, CreditCard, Users, BarChart3, UserCog, Building2, KeyRound, ScrollText, Settings,
+  FileSpreadsheet, CreditCard, Users, BarChart3, UserCog, Building2, KeyRound, ScrollText, Settings, Map: MapIcon,
 };
 
 function Icon({ name, className }: { name: string; className?: string }) {

@@ -4,6 +4,7 @@ import { listActiveAnms } from "@/server/services/anms";
 import { can } from "@/server/rbac";
 import { PageHeader } from "@/components/ui";
 import { TerminalsTable } from "./TerminalsTable";
+import { getRegionMap } from "@/server/services/regions";
 
 export const metadata: Metadata = { title: "Terminals" };
 
@@ -12,7 +13,7 @@ export default async function TerminalsPage() {
   return (
     <>
       <PageHeader eyebrow="Terminal master" title="Terminals" subtitle="The single source of truth for every POS terminal's identity and current mapping. Open a terminal to see its full lifecycle." />
-      <TerminalsTable anms={await listActiveAnms()} canExport={can(actor.role, "export:run")} canRemap={can(actor.role, "request:create")} />
+      <TerminalsTable regions={await getRegionMap()} anms={await listActiveAnms()} canExport={can(actor.role, "export:run")} canRemap={can(actor.role, "request:create")} />
     </>
   );
 }

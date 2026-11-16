@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requirePage } from "@/server/http";
 import { vendorSummary } from "@/server/services/reports";
 import { PageHeader } from "@/components/ui";
+import { getRegionMap } from "@/server/services/regions";
 import { RequestsTable, type TabDef } from "@/components/requests/RequestsTable";
 
 export const metadata: Metadata = { title: "Treatment Queue" };
@@ -41,7 +42,8 @@ export default async function VendorQueuePage({ searchParams }: { searchParams: 
           </div>
         ))}
       </div>
-      <RequestsTable key={initial} mode="vendor" tabs={TABS} initialTab={initial} bulkActions={["start", "treat"]} />
+      <RequestsTable
+        regions={await getRegionMap()} key={initial} mode="vendor" tabs={TABS} initialTab={initial} bulkActions={["start", "treat"]} />
     </>
   );
 }

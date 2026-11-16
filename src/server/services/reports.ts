@@ -12,8 +12,9 @@ import { writeAudit } from "../audit";
 import { decrypt } from "../crypto";
 import { buildRequestFilters, searchSchema } from "./requests";
 import { terminalFilters, terminalSearchSchema } from "./terminals";
-import { EXCEPTION_REASON_LABELS, OPEN_STATUSES, REQUEST_TYPE_LABELS, STATUS_LABELS, TERMINAL_STATUS_LABELS } from "@/lib/constants";
+import { REGIONS, REGION_LABELS, type Region, EXCEPTION_REASON_LABELS, OPEN_STATUSES, REQUEST_TYPE_LABELS, STATUS_LABELS, TERMINAL_STATUS_LABELS } from "@/lib/constants";
 import { maskAccount } from "@/lib/format";
+import { getRegionMap } from "./regions";
 
 function requireReports(actor: Actor) {
   if (!can(actor.role, "report:view")) throw forbidden();
@@ -105,6 +106,13 @@ export async function dashboard(actor: Actor) {
     .groupBy(terminalMappings.state)
     .orderBy(desc(sql`count(*)`))
     .limit(8);
+  const byRegion = await db.execute(sql`
+    select sr.region,
+      (select count(*)::int from terminal_mappings tm where tm.is_current and tm.state in (select state from state_regions x where x.region = sr.region)) as mapped,
+      (select count(*)::int from requests r where r.status in ('DRAFT','READY_FOR_REVIEW','SUBMITTED','IN_PROGRESS','EXCEPTION','RETURNED') and r.state in (select state from state_regions x where x.region = sr.region)) as outstanding,
+      (select count(*)::int from requests r where r.status = 'EXCEPTION' and r.state in (select state from state_regions x where x.region = sr.region)) as exceptions
+    from (select distinct region from state_regions) sr order by sr.region
+  `);
   const daily = await db.execute(sql`
     with days as (
       select generate_series((now() at time zone 'Africa/Lagos')::date - 13, (now() at time zone 'Africa/Lagos')::date, interval '1 day')::date as d
@@ -121,6 +129,7 @@ export async function dashboard(actor: Actor) {
     recentTreatments,
     byAnm,
     byState,
+    byRegion: (byRegion.rows as { region: Region; mapped: number; outstanding: number; exceptions: number }[]).map((r) => ({ ...r, label: REGION_LABELS[r.region] })),
     daily: daily.rows as { day: string; submitted: number; treated: number }[],
   };
 }
@@ -228,19 +237,36 @@ export async function anmReport(actor: Actor, input: unknown) {
 export async function locationReport(actor: Actor, input: unknown) {
   requireReports(actor);
   const { from, to, fromTs, toTs } = range(input);
+  const region = z.enum(REGIONS).optional().safeParse((input as { region?: string } | null)?.region).data;
   const res = await getDb().execute(sql`
     with states as (
       select state from terminal_mappings where is_current
       union select state from requests
+      union select state from state_regions
     )
-    select s.state,
+    select s.state, sr.region,
       (select count(*)::int from terminal_mappings tm where tm.state = s.state and tm.is_current) as terminals,
       (select count(*)::int from requests r where r.state = s.state and r.type = 'MAPPING' and r.treated_at between ${fromTs} and ${toTs}) as mappings,
       (select count(*)::int from requests r where r.state = s.state and r.type = 'REMAPPING' and r.treated_at between ${fromTs} and ${toTs}) as remappings,
       (select count(*)::int from requests r where r.state = s.state and r.status in ('DRAFT','READY_FOR_REVIEW','SUBMITTED','IN_PROGRESS','EXCEPTION','RETURNED')) as outstanding
-    from states s order by terminals desc, s.state
+    from states s left join state_regions sr on sr.state = s.state
+    where ${region ? sql`sr.region = ${region}` : sql`true`}
+    order by sr.region nulls last, terminals desc, s.state
   `);
-  return { from, to, rows: res.rows as { state: string; terminals: number; mappings: number; remappings: number; outstanding: number }[] };
+  const rows = res.rows as { state: string; region: Region | null; terminals: number; mappings: number; remappings: number; outstanding: number }[];
+  const banks = [...REGIONS, null].map((r) => {
+    const rs = rows.filter((x) => x.region === r);
+    return {
+      region: r,
+      label: r ? REGION_LABELS[r] : "Unassigned",
+      states: rs.length,
+      terminals: rs.reduce((a, x) => a + x.terminals, 0),
+      mappings: rs.reduce((a, x) => a + x.mappings, 0),
+      remappings: rs.reduce((a, x) => a + x.remappings, 0),
+      outstanding: rs.reduce((a, x) => a + x.outstanding, 0),
+    };
+  }).filter((b) => b.states > 0);
+  return { from, to, region: region ?? null, banks, rows: rows.map((r) => ({ ...r, regionLabel: r.region ? REGION_LABELS[r.region] : "Unassigned" })) };
 }
 
 export async function outstandingReport(actor: Actor) {
@@ -354,6 +380,8 @@ export async function exportRequests(actor: Actor, input: unknown, opts: { inclu
   if (!p.success) throw new AppError("VALIDATION", "Invalid export filter.");
   const fullAccount = !!opts.includeFullAccount && can(actor.role, "account:view_full");
   const db = getDb();
+  const regionMap = await getRegionMap();
+  const bank = (st: string | null | undefined) => (st && regionMap[st] ? REGION_LABELS[regionMap[st]!] : "");
   const creator = alias(users, "creator");
   const submitter = alias(users, "submitter");
   const treater = alias(users, "treater");
@@ -385,6 +413,7 @@ export async function exportRequests(actor: Actor, input: unknown, opts: { inclu
     agentName: r.agentName,
     account: fullAccount ? decrypt(r.accountEnc) : maskAccount(r.accountLast4),
     state: r.state,
+    bank: bank(r.state),
     area: r.area ?? "",
     anm: r.anmName,
     reason: r.reason ?? "",
@@ -419,6 +448,7 @@ export async function exportRequests(actor: Actor, input: unknown, opts: { inclu
           { header: "Agent/Merchant", key: "agentName", width: 32 },
           { header: "Account Number", key: "account", width: 16 },
           { header: "Location (State)", key: "state" },
+          { header: "Bank", key: "bank" },
           { header: "Area/LGA", key: "area" },
           { header: "ANM", key: "anm", width: 22 },
           { header: "Remapping Reason", key: "reason", width: 24 },
@@ -447,6 +477,7 @@ export async function exportTerminals(actor: Actor, input: unknown) {
   const db = getDb();
   const cm = alias(terminalMappings, "cm");
   const conds = terminalFilters(p.data);
+  const regionMap = await getRegionMap();
   const rows = await db
     .select({ t: terminals, m: cm })
     .from(terminals)
@@ -467,6 +498,7 @@ export async function exportTerminals(actor: Actor, input: unknown) {
           { header: "Current Agent/Merchant", key: "agent", width: 32 },
           { header: "Account Number", key: "account", width: 16 },
           { header: "State", key: "state" },
+          { header: "Bank", key: "bank" },
           { header: "Area/LGA", key: "area" },
           { header: "ANM", key: "anm", width: 22 },
           { header: "Mapping Version", key: "version" },
@@ -484,6 +516,7 @@ export async function exportTerminals(actor: Actor, input: unknown) {
           agent: m?.agentName ?? "",
           account: m ? maskAccount(m.accountLast4) : "",
           state: m?.state ?? "",
+          bank: m?.state && regionMap[m.state] ? REGION_LABELS[regionMap[m.state]!] : "",
           area: m?.area ?? "",
           anm: m?.anmName ?? "",
           version: m?.version ?? "",

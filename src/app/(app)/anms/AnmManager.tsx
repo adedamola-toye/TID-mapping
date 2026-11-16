@@ -7,7 +7,7 @@ import { Plus, Search } from "lucide-react";
 import { api, ApiError } from "@/lib/client/api";
 import { Alert, EmptyState, Field, Modal, Spinner, clsx } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { NIGERIAN_STATES } from "@/lib/constants";
+import { NIGERIAN_STATES, REGIONS, REGION_LABELS, type RegionMap } from "@/lib/constants";
 
 interface Anm {
   id: string;
@@ -22,7 +22,7 @@ interface Anm {
 
 const blank = { code: "", fullName: "", email: "", phone: "", regions: [] as string[], isActive: true };
 
-export function AnmManager({ items, canManage }: { items: Anm[]; canManage: boolean }) {
+export function AnmManager({ items, canManage, regions }: { items: Anm[]; canManage: boolean; regions: RegionMap }) {
   const router = useRouter();
   const toast = useToast();
   const [q, setQ] = useState("");
@@ -109,13 +109,36 @@ export function AnmManager({ items, canManage }: { items: Anm[]; canManage: bool
             </div>
             <fieldset>
               <legend className="label">States covered</legend>
-              <div className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto rounded border border-line p-2 sm:grid-cols-4">
-                {NIGERIAN_STATES.map((s) => (
-                  <label key={s} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-surface-sunken">
-                    <input type="checkbox" className="accent-brand-700" checked={edit.v.regions.includes(s)} onChange={(e) => setEdit({ ...edit, v: { ...edit.v, regions: e.target.checked ? [...edit.v.regions, s] : edit.v.regions.filter((x) => x !== s) } })} />
-                    {s}
-                  </label>
-                ))}
+              <div className="space-y-3 rounded border border-line p-3">
+                {[...REGIONS, null].map((rg) => {
+                  const group = NIGERIAN_STATES.filter((st) => (rg ? regions[st] === rg : !regions[st]));
+                  if (!group.length) return null;
+                  const all = group.every((st) => edit.v.regions.includes(st));
+                  return (
+                    <div key={rg ?? "none"}>
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{rg ? REGION_LABELS[rg] : "Not assigned to a bank"}</span>
+                        <button
+                          type="button"
+                          className="text-xs text-brand-700 hover:underline"
+                          onClick={() =>
+                            setEdit({ ...edit, v: { ...edit.v, regions: all ? edit.v.regions.filter((x) => !group.includes(x as never)) : [...new Set([...edit.v.regions, ...group])] } })
+                          }
+                        >
+                          {all ? "Clear" : `Select all ${rg ? REGION_LABELS[rg] : ""}`}
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1 sm:grid-cols-4">
+                        {group.map((st) => (
+                          <label key={st} className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-surface-sunken">
+                            <input type="checkbox" className="accent-brand-700" checked={edit.v.regions.includes(st)} onChange={(e) => setEdit({ ...edit, v: { ...edit.v, regions: e.target.checked ? [...edit.v.regions, st] : edit.v.regions.filter((x) => x !== st) } })} />
+                            {st}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </fieldset>
             <label className="flex items-start gap-2 text-sm">

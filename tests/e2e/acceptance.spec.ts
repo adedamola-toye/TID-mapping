@@ -246,3 +246,45 @@ test("FIELD SUBMITTER: mobile capture, submit for review, cannot release to vend
   await expect(page).toHaveURL(/\/forbidden/);
   await ctx.close();
 });
+
+test("REGIONS: admin assigns a state to a bank; capture form drills down North/South Bank → state", async ({ browser }) => {
+  const admin = await newSession(browser, USERS.admin);
+  const a = admin.page;
+  await a.goto("/admin/regions");
+  await expect(a.getByRole("heading", { name: /North Bank & South Bank/ })).toBeVisible();
+  await a.getByLabel("Bank for Kwara").selectOption("SOUTH_BANK");
+  await expect(a.getByText(/1 unsaved change/)).toBeVisible();
+  await a.getByRole("button", { name: "Save assignment" }).click();
+  await expect(a.getByText("1 state updated.")).toBeVisible();
+
+  const ops = await newSession(browser, USERS.ops);
+  const p = ops.page;
+  await p.goto("/requests/new/mapping");
+  const state = p.getByLabel("Location (state)");
+  await p.getByLabel("Bank (region)").selectOption("SOUTH_BANK");
+  const south = await state.locator("option").allTextContents();
+  expect(south).toContain("Lagos");
+  expect(south).toContain("Kwara"); // moved by the admin
+  expect(south).not.toContain("Kano");
+  await p.getByLabel("Bank (region)").selectOption("NORTH_BANK");
+  const north = await state.locator("option").allTextContents();
+  expect(north).toContain("Kano");
+  expect(north).not.toContain("Kwara");
+  // Choosing a state first fills in its bank
+  await p.getByLabel("Bank (region)").selectOption("");
+  await state.selectOption("Lagos");
+  await expect(p.getByLabel("Bank (region)")).toHaveValue("SOUTH_BANK");
+
+  // Queue filter by bank
+  await p.goto("/requests");
+  await p.getByRole("button", { name: /Filters/ }).click();
+  await p.getByLabel("Bank", { exact: true }).selectOption("NORTH_BANK");
+  const rows = p.locator("tbody tr");
+  await expect(rows.first()).toBeVisible();
+
+  await a.goto("/admin/regions");
+  await a.getByLabel("Bank for Kwara").selectOption("NORTH_BANK");
+  await a.getByRole("button", { name: "Save assignment" }).click();
+  await expect(a.getByText("1 state updated.")).toBeVisible();
+  await Promise.all([admin.ctx.close(), ops.ctx.close()]);
+});

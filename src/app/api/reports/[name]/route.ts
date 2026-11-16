@@ -54,7 +54,9 @@ async function run(name: string, actor: Parameters<typeof rep.dailyReport>[0], b
       const d = await rep.locationReport(actor, body);
       return {
         data: d,
-        sheets: [{ name: "Location", columns: [{ header: "State", key: "state" }, { header: "Terminals", key: "terminals" }, { header: "Mappings (period)", key: "mappings" }, { header: "Remappings (period)", key: "remappings" }, { header: "Outstanding", key: "outstanding" }], rows: d.rows }],
+        sheets: [
+          { name: "By bank", columns: [{ header: "Bank", key: "label" }, { header: "States", key: "states" }, { header: "Terminals", key: "terminals" }, { header: "Mappings (period)", key: "mappings" }, { header: "Remappings (period)", key: "remappings" }, { header: "Outstanding", key: "outstanding" }], rows: d.banks },
+          { name: "By state", columns: [{ header: "Bank", key: "regionLabel" }, { header: "State", key: "state" }, { header: "Terminals", key: "terminals" }, { header: "Mappings (period)", key: "mappings" }, { header: "Remappings (period)", key: "remappings" }, { header: "Outstanding", key: "outstanding" }], rows: d.rows }],
       };
     }
     case "outstanding": {

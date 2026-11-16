@@ -6,7 +6,8 @@ import { Download, Search } from "lucide-react";
 import { api, ApiError, download } from "@/lib/client/api";
 import { EmptyState, Pagination, Spinner, Tabs, TerminalBadge } from "@/components/ui";
 import { useToast } from "@/components/toast";
-import { NIGERIAN_STATES, type TerminalStatus } from "@/lib/constants";
+import { type Region, type RegionMap, type TerminalStatus } from "@/lib/constants";
+import { RegionStatePicker } from "@/components/RegionStatePicker";
 import { fmtDate } from "@/lib/format";
 
 interface Row {
@@ -37,12 +38,13 @@ const TABS: { value: string; label: string; status?: TerminalStatus[]; remapped?
   { value: "inactive", label: "Inactive", status: ["INACTIVE"] },
 ];
 
-export function TerminalsTable({ anms, canExport, canRemap }: { anms: { id: string; fullName: string }[]; canExport: boolean; canRemap: boolean }) {
+export function TerminalsTable({ anms, canExport, canRemap, regions }: { anms: { id: string; fullName: string }[]; canExport: boolean; canRemap: boolean; regions: RegionMap }) {
   const toast = useToast();
   const [tab, setTab] = useState("all");
   const [q, setQ] = useState("");
   const [qd, setQd] = useState("");
   const [state, setState] = useState("");
+  const [region, setRegion] = useState<Region | "">("");
   const [anmId, setAnmId] = useState("");
   const [account, setAccount] = useState("");
   const [page, setPage] = useState(1);
@@ -55,8 +57,8 @@ export function TerminalsTable({ anms, canExport, canRemap }: { anms: { id: stri
   }, [q]);
   const t = TABS.find((x) => x.value === tab)!;
   const body = useMemo(
-    () => ({ q: qd || undefined, state: state || undefined, anmId: anmId || undefined, accountNumber: account || undefined, status: t.status, remapped: t.remapped, page, pageSize }),
-    [qd, state, anmId, account, t, page, pageSize],
+    () => ({ q: qd || undefined, region: region || undefined, state: state || undefined, anmId: anmId || undefined, accountNumber: account || undefined, status: t.status, remapped: t.remapped, page, pageSize }),
+    [qd, region, state, anmId, account, t, page, pageSize],
   );
   const load = useCallback(async () => {
     setLoading(true);
@@ -71,20 +73,17 @@ export function TerminalsTable({ anms, canExport, canRemap }: { anms: { id: stri
   useEffect(() => {
     load();
   }, [load]);
-  useEffect(() => setPage(1), [tab, qd, state, anmId, account, pageSize]);
+  useEffect(() => setPage(1), [tab, qd, region, state, anmId, account, pageSize]);
 
   return (
     <div className="card overflow-hidden">
       <div className="px-4 pt-2"><Tabs tabs={TABS.map((x) => ({ value: x.value, label: x.label }))} value={tab} onChange={setTab} /></div>
-      <div className="grid gap-3 border-b border-line px-4 py-3 md:grid-cols-[1fr_10rem_12rem_10rem_auto]">
+      <div className="grid gap-3 border-b border-line px-4 py-3 md:grid-cols-[1fr_9rem_11rem_12rem_9rem_auto] md:items-end">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-subtle" aria-hidden />
           <input className="input pl-9" placeholder="Serial, TID, ISW TID, agent or ANM…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search terminals" />
         </div>
-        <select className="input" value={state} onChange={(e) => setState(e.target.value)} aria-label="State">
-          <option value="">All states</option>
-          {NIGERIAN_STATES.map((s) => <option key={s}>{s}</option>)}
-        </select>
+        <RegionStatePicker mode="filter" regions={regions} region={region} state={state} onChange={(x) => { setRegion(x.region); setState(x.state); }} />
         <select className="input" value={anmId} onChange={(e) => setAnmId(e.target.value)} aria-label="ANM">
           <option value="">All ANMs</option>
           {anms.map((a) => <option key={a.id} value={a.id}>{a.fullName}</option>)}

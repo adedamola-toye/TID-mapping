@@ -7,14 +7,14 @@ import { api, ApiError, download } from "@/lib/client/api";
 import { Alert, Card, Spinner, StatusBadge, Tabs, TypeTag } from "@/components/ui";
 import { HBars } from "@/components/charts";
 import { fmtDateTime, fmtDuration, fmtNumber } from "@/lib/format";
-import { ROLE_LABELS, type RequestStatus, type Role } from "@/lib/constants";
+import { REGIONS, REGION_LABELS, ROLE_LABELS, type Region, type RequestStatus, type Role } from "@/lib/constants";
 
 const TABS = [
   { value: "daily", label: "Daily mapping" },
   { value: "vendor", label: "Vendor performance" },
   { value: "outstanding", label: "Outstanding" },
   { value: "anm", label: "ANM" },
-  { value: "location", label: "Location" },
+  { value: "location", label: "Location (N/S Bank)" },
   { value: "activity", label: "Activity" },
   { value: "terminal", label: "Terminal history" },
 ];
@@ -26,6 +26,7 @@ export function Reports({ initialTab, canExport }: { initialTab: string; canExpo
   const [tab, setTab] = useState(TABS.some((t) => t.value === initialTab) ? initialTab : "daily");
   const [from, setFrom] = useState(iso(new Date(Date.now() - 29 * 86400_000)));
   const [to, setTo] = useState(iso(new Date()));
+  const [region, setRegion] = useState<Region | "">("");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -35,11 +36,11 @@ export function Reports({ initialTab, canExport }: { initialTab: string; canExpo
     setLoading(true);
     setErr(null);
     setData(null);
-    api(`/api/reports/${tab}`, { body: { from, to } })
+    api(`/api/reports/${tab}`, { body: { from, to, region: region || undefined } })
       .then(setData)
       .catch((e) => setErr(e instanceof ApiError ? e.message : "Could not load report."))
       .finally(() => setLoading(false));
-  }, [tab, from, to]);
+  }, [tab, from, to, region]);
 
   const usesRange = !["outstanding", "terminal"].includes(tab);
 
@@ -48,6 +49,15 @@ export function Reports({ initialTab, canExport }: { initialTab: string; canExpo
       <div className="px-4 pt-2"><Tabs tabs={TABS} value={tab} onChange={setTab} /></div>
       {tab !== "terminal" && (
         <div className="flex flex-wrap items-end gap-3 border-b border-line px-4 py-3">
+          {tab === "location" && (
+            <label className="text-xs">
+              <span className="label">Bank</span>
+              <select className="input" value={region} onChange={(e) => setRegion(e.target.value as Region | "")}>
+                <option value="">All banks</option>
+                {REGIONS.map((x) => <option key={x} value={x}>{REGION_LABELS[x]}</option>)}
+              </select>
+            </label>
+          )}
           {usesRange && (
             <>
               <label className="text-xs"><span className="label">From</span><input type="date" className="input" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>
@@ -61,7 +71,7 @@ export function Reports({ initialTab, canExport }: { initialTab: string; canExpo
           )}
           <div className="flex-1" />
           {canExport && (
-            <button className="btn-secondary" onClick={() => download(`/api/reports/${tab}`, { from, to, format: "xlsx" })}>
+            <button className="btn-secondary" onClick={() => download(`/api/reports/${tab}`, { from, to, region: region || undefined, format: "xlsx" })}>
               <Download className="h-4 w-4" aria-hidden /> Export to Excel
             </button>
           )}
@@ -86,11 +96,30 @@ export function Reports({ initialTab, canExport }: { initialTab: string; canExpo
           </T>
         )}
         {data && tab === "location" && (
-          <T head={["State", "Mapped terminals", "Mappings (period)", "Remappings (period)", "Outstanding"]}>
-            {data.rows.map((r: any) => (
-              <tr key={r.state}><td className="table-td">{r.state}</td><N v={r.terminals} /><N v={r.mappings} /><N v={r.remappings} /><N v={r.outstanding} /></tr>
-            ))}
-          </T>
+          <div className="space-y-5">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {data.banks.map((b: any) => (
+                <button
+                  key={b.label}
+                  onClick={() => b.region && setRegion(region === b.region ? "" : b.region)}
+                  className={`rounded border p-4 text-left transition-colors ${region && region === b.region ? "border-brand-600 bg-brand-50/60" : "border-line hover:border-line-strong"}`}
+                  aria-pressed={region === b.region}
+                >
+                  <div className="flex items-baseline justify-between"><span className="text-sm font-semibold">{b.label}</span><span className="text-xs text-ink-subtle">{b.states} states</span></div>
+                  <dl className="mt-3 grid grid-cols-4 gap-2 text-center">
+                    {[["Terminals", b.terminals], ["Mapped", b.mappings], ["Remapped", b.remappings], ["Outstanding", b.outstanding]].map(([l, v]) => (
+                      <div key={l}><dd className="num text-lg font-semibold">{fmtNumber(v)}</dd><dt className="text-2xs uppercase tracking-wide text-ink-subtle">{l}</dt></div>
+                    ))}
+                  </dl>
+                </button>
+              ))}
+            </div>
+            <T head={["Bank", "State", "Mapped terminals", "Mappings (period)", "Remappings (period)", "Outstanding"]}>
+              {data.rows.map((r: any) => (
+                <tr key={r.state}><td className="table-td text-xs text-ink-muted">{r.regionLabel}</td><td className="table-td">{r.state}</td><N v={r.terminals} /><N v={r.mappings} /><N v={r.remappings} /><N v={r.outstanding} /></tr>
+              ))}
+            </T>
+          </div>
         )}
         {data && tab === "activity" && (
           <T head={["User", "Role", "Created", "Submitted", "Treated", "Exceptions", "Returned", "Amended", "Total actions"]}>
@@ -117,7 +146,7 @@ function T({ head, children }: { head: string[]; children: ReactNode }) {
   return (
     <div className="overflow-x-auto rounded border border-line">
       <table className="w-full min-w-[420px] border-separate border-spacing-0">
-        <thead><tr>{head.map((h, i) => <th key={h} className={`table-th ${i > 0 && !["ANM", "Role", "Status", "User"].includes(h) ? "text-right" : ""}`}>{h}</th>)}</tr></thead>
+        <thead><tr>{head.map((h, i) => <th key={h} className={`table-th ${i > 0 && !["ANM", "Role", "Status", "User", "State"].includes(h) ? "text-right" : ""}`}>{h}</th>)}</tr></thead>
         <tbody>{children}</tbody>
       </table>
     </div>

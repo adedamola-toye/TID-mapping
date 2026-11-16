@@ -18,6 +18,7 @@ import {
   PRIORITIES,
   REQUEST_STATUSES,
   REQUEST_TYPES,
+  REGIONS,
   VENDOR_ACTIONABLE_STATUSES,
   VENDOR_VISIBLE_STATUSES,
   type RequestStatus,
@@ -34,6 +35,7 @@ import {
   normalizeIdentifier,
 } from "@/lib/validation";
 import { maskAccount } from "@/lib/format";
+import { stateInRegion } from "./regions";
 import { z } from "zod";
 
 type RequestRow = typeof requests.$inferSelect;
@@ -941,6 +943,7 @@ export const searchSchema = z.object({
   status: z.array(z.enum(REQUEST_STATUSES)).max(10).optional(),
   type: z.enum(REQUEST_TYPES).optional(),
   state: z.string().max(40).optional(),
+  region: z.enum(REGIONS).optional(),
   anmId: z.string().uuid().optional(),
   vendorId: z.string().uuid().optional(),
   createdBy: z.string().uuid().optional(),
@@ -1001,6 +1004,7 @@ export function buildRequestFilters(actor: Actor, f: z.infer<typeof searchSchema
   }
   if (f.type) conds.push(eq(requests.type, f.type));
   if (f.state) conds.push(eq(requests.state, f.state));
+  if (f.region) conds.push(stateInRegion(requests.state, f.region));
   if (f.anmId) conds.push(eq(requests.anmId, f.anmId));
   if (f.vendorId && actor.role !== "VENDOR_USER") conds.push(eq(requests.vendorId, f.vendorId));
   if (f.createdBy && actor.role !== "VENDOR_USER") conds.push(eq(requests.createdBy, f.createdBy));
