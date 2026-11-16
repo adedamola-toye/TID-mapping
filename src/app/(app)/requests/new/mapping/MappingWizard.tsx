@@ -21,6 +21,42 @@ export function MappingWizard({ anms, canSubmitToVendor }: { anms: Anm[]; canSub
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ id: string; reference: string; status: string } | null>(null);
   const anm = anms.find((a) => a.id === m.anmId);
+  const [found, setFound] = useState<null | { tone: "info" | "warn"; text: string; link?: { href: string; label: string } }>(null);
+
+  /** Look the serial up in the terminal master (e.g. from Elnexu's TID sheet) and pre-fill what we know. */
+  async function lookupSerial() {
+    const serial = t.serialNumber.trim();
+    setFound(null);
+    if (serial.length < 5) return;
+    try {
+      const r = await api<{
+        terminal: { serialNumber: string; tid: string | null; iswTid: string | null; legacyAgentName: string | null; legacyStatus: string | null; stockLocation: string | null; stockState: string | null };
+        current: { agentName: string } | null;
+        openRequest: { id: string | null; reference: string } | null;
+      }>("/api/terminals/lookup", { body: { identifier: serial } });
+      if (r.terminal.serialNumber !== serial.toUpperCase().replace(/\s/g, "")) return; // matched on TID, not serial
+      if (r.current) {
+        setFound({ tone: "warn", text: `This terminal is already mapped to ${r.current.agentName}. To change its agent, use remapping.`, link: { href: `/requests/new/remapping?terminal=${encodeURIComponent(r.terminal.serialNumber)}`, label: "Remap this terminal" } });
+        return;
+      }
+      if (r.openRequest) {
+        setFound({ tone: "warn", text: `This terminal already has a pending request (${r.openRequest.reference}).`, link: r.openRequest.id ? { href: `/requests/${r.openRequest.id}`, label: "Open it" } : undefined });
+        return;
+      }
+      setT((cur) => ({ ...cur, tid: cur.tid || r.terminal.tid || "", iswTid: cur.iswTid || r.terminal.iswTid || "" }));
+      setM((cur) => ({ ...cur, agentName: cur.agentName || r.terminal.legacyAgentName || "", state: cur.state || r.terminal.stockState || "" }));
+      const bits = [
+        r.terminal.tid && `TID ${r.terminal.tid}`,
+        r.terminal.iswTid && `ISW TID ${r.terminal.iswTid}`,
+        r.terminal.legacyAgentName && `merchant "${r.terminal.legacyAgentName}"`,
+        r.terminal.stockLocation && `location "${r.terminal.stockLocation}"`,
+        r.terminal.legacyStatus && `status "${r.terminal.legacyStatus}"`,
+      ].filter(Boolean);
+      setFound({ tone: "info", text: `Found on the vendor TID sheet: ${bits.join(", ")}. Empty fields were pre-filled — confirm them and add the account number and ANM.` });
+    } catch {
+      /* not registered yet — a new terminal record will be created */
+    }
+  }
 
   const payload = () => ({
     type: "MAPPING",
@@ -98,7 +134,7 @@ export function MappingWizard({ anms, canSubmitToVendor }: { anms: Anm[]; canSub
           <Card title="Terminal">
             <div className="grid gap-5 sm:grid-cols-3">
               <Field label="Terminal serial number" required error={errors.serialNumber}>
-                {(p) => <input {...p} className="input ident" autoComplete="off" maxLength={40} value={t.serialNumber} onChange={(e) => setT({ ...t, serialNumber: e.target.value })} autoFocus />}
+                {(p) => <input {...p} className="input ident" autoComplete="off" maxLength={40} value={t.serialNumber} onChange={(e) => setT({ ...t, serialNumber: e.target.value })} onBlur={lookupSerial} autoFocus />}
               </Field>
               <Field label="TID" required error={errors.tid} hint="8 characters, e.g. 2WKL1136">
                 {(p) => <input {...p} className="input ident uppercase" autoComplete="off" maxLength={8} value={t.tid} onChange={(e) => setT({ ...t, tid: e.target.value.toUpperCase() })} />}
@@ -107,6 +143,13 @@ export function MappingWizard({ anms, canSubmitToVendor }: { anms: Anm[]; canSub
                 {(p) => <input {...p} className="input ident uppercase" autoComplete="off" maxLength={8} value={t.iswTid} onChange={(e) => setT({ ...t, iswTid: e.target.value.toUpperCase() })} />}
               </Field>
             </div>
+            {found && (
+              <div className="mt-4">
+                <Alert tone={found.tone}>
+                  {found.text} {found.link && <Link className="font-medium underline" href={found.link.href}>{found.link.label}</Link>}
+                </Alert>
+              </div>
+            )}
           </Card>
           <Card title="Agent / merchant">
             <MerchantFields v={m} set={(p) => setM({ ...m, ...p })} errors={errors} anms={anms} />

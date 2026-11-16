@@ -139,12 +139,52 @@ const STATE_ALIASES: Record<string, NigerianState> = {
   ikeja: "Lagos",
 };
 
-/** Resolve free-text location (e.g. from a legacy spreadsheet) into a controlled state, or null. */
+function editDistance(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return dp[a.length][b.length];
+}
+
+const exactState = (s: string): NigerianState | null =>
+  NIGERIAN_STATES.find((x) => x.toLowerCase() === s) ?? STATE_ALIASES[s] ?? null;
+
+/**
+ * Resolve free-text location (e.g. from a legacy spreadsheet) into a controlled state, or null.
+ * Handles case ("TARABA"), suffixes ("Rivers State"), compound forms ("FCT-Abuja"), small typos
+ * ("kadunna") and street addresses that end with / contain a state ("… Surulere Lagos").
+ */
 export function normalizeState(input: string | null | undefined): NigerianState | null {
   if (!input) return null;
   const cleaned = input.trim().toLowerCase().replace(/\s+state$/, "").replace(/\s+/g, " ");
-  if (!cleaned) return null;
-  const direct = NIGERIAN_STATES.find((s) => s.toLowerCase() === cleaned);
+  if (!cleaned || /^\d+$/.test(cleaned)) return null;
+  const direct = exactState(cleaned);
   if (direct) return direct;
-  return STATE_ALIASES[cleaned] ?? null;
+  // Compound forms: "FCT-Abuja", "Abuja/FCT", "Lagos, Nigeria"
+  for (const part of cleaned.split(/\s*[-/,]\s*/)) {
+    const hit = exactState(part.replace(/\s+state$/, ""));
+    if (hit) return hit;
+  }
+  // Single-word typos (edit distance 1, or 2 for longer names)
+  if (!/\s/.test(cleaned) && cleaned.length >= 4) {
+    const close = NIGERIAN_STATES.filter((s) => {
+      const d = editDistance(cleaned, s.toLowerCase());
+      return d <= (s.length >= 6 ? 2 : 1);
+    });
+    if (close.length === 1) return close[0];
+  }
+  // Addresses: pick a state (or alias) named as a whole word — the last one mentioned wins.
+  const words = ` ${cleaned.replace(/[^a-z ]/g, " ").replace(/\s+/g, " ")} `;
+  let best: { idx: number; state: NigerianState } | null = null;
+  const candidates: [string, NigerianState][] = [
+    ...NIGERIAN_STATES.map((s) => [s.toLowerCase(), s] as [string, NigerianState]),
+    ...(Object.entries(STATE_ALIASES) as [string, NigerianState][]).filter(([k]) => k.length > 3),
+  ];
+  for (const [name, state] of candidates) {
+    const idx = words.lastIndexOf(` ${name} `);
+    if (idx >= 0 && (!best || idx > best.idx)) best = { idx, state };
+  }
+  return best?.state ?? null;
 }

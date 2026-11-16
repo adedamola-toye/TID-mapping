@@ -9,7 +9,7 @@ import { AppError, forbidden, notFound } from "../errors";
 import type { Actor } from "../actor";
 import { can } from "../rbac";
 import { config } from "../config";
-import { parseUpload, buildWorkbook } from "../excel";
+import { parseUpload, buildWorkbook, UNLABELLED } from "../excel";
 import { createMappingRequest, createRemappingRequest } from "./requests";
 import {
   IMPORT_KINDS,
@@ -57,6 +57,7 @@ const F = {
 
 export const IMPORT_FIELDS: Record<ImportKind, TargetField[]> = {
   TERMINAL_STOCK: [
+    { ...F.agentName, label: "Agent/Merchant (as on sheet)", required: false },
     { ...F.serialNumber, required: true },
     { ...F.tid, required: false },
     { ...F.iswTid, required: false },
@@ -97,10 +98,20 @@ function isKnownHeader(h: string) {
   return Object.values(F).some((f) => f.synonyms.some((s) => normHeader(s) === n));
 }
 
-export function autoMapColumns(kind: ImportKind, headers: string[]): Record<string, string | null> {
+const UNNAMED = UNLABELLED;
+const looksLikeName = (v: string) => /[A-Za-z]{3,}/.test(v) && !/^\d[\d\s-]*$/.test(v) && !/^[A-Z0-9]{8}$/.test(v.trim());
+
+/**
+ * Suggest a column for each target field. Beyond header synonyms it recognises the legacy Elnexu
+ * sheet's quirks: an UNLABELLED merchant-name column, and a "Status/Comment" heading that spans
+ * two columns (status in the labelled one, remarks in the unlabelled column beside it).
+ * Users can always override the suggestion on the column-mapping screen.
+ */
+export function autoMapColumns(kind: ImportKind, headers: string[], sample: Record<string, string>[] = []): Record<string, string | null> {
   const mapping: Record<string, string | null> = {};
   const used = new Set<string>();
-  for (const field of IMPORT_FIELDS[kind]) {
+  const fields = IMPORT_FIELDS[kind];
+  for (const field of fields) {
     let match: string | null = null;
     for (const syn of field.synonyms) {
       const h = headers.find((x) => !used.has(x) && normHeader(x) === normHeader(syn));
@@ -111,6 +122,28 @@ export function autoMapColumns(kind: ImportKind, headers: string[]): Record<stri
     }
     mapping[field.key] = match;
     if (match) used.add(match);
+  }
+
+  // Unlabelled column of business names → agent/merchant name.
+  if ("agentName" in mapping && !mapping.agentName && sample.length) {
+    const cand = headers.find((h) => {
+      if (used.has(h) || !UNNAMED.test(h)) return false;
+      const vals = sample.map((r) => (r[h] ?? "").trim()).filter(Boolean);
+      return vals.length >= Math.max(1, sample.length * 0.6) && vals.filter(looksLikeName).length >= vals.length * 0.8;
+    });
+    if (cand) {
+      mapping.agentName = cand;
+      used.add(cand);
+    }
+  }
+
+  // "Status/Comment" spanning two columns (legacy vendor sheet).
+  if (kind === "TERMINAL_STOCK" && mapping.comment && normHeader(mapping.comment) === "statuscomment" && !mapping.status) {
+    const sc = mapping.comment;
+    mapping.status = sc;
+    const next = headers[headers.indexOf(sc) + 1];
+    mapping.comment = next && UNNAMED.test(next) && !used.has(next) ? next : sc;
+    used.add(mapping.comment);
   }
   return mapping;
 }
@@ -131,7 +164,7 @@ export async function uploadBatch(actor: Actor, kindIn: string, fileName: string
     throw new AppError("BAD_REQUEST", "Upload an .xlsx or .csv file with a simple file name.");
   }
   const parsed = await parseUpload(fileName, buf, { maxRows: cfg.IMPORT_MAX_ROWS, isKnownHeader });
-  const mapping = autoMapColumns(kind.data, parsed.headers);
+  const mapping = autoMapColumns(kind.data, parsed.headers, parsed.rows.slice(0, 50).map((r) => r.values));
   const db = getDb();
   const batch = await db.transaction(async (tx) => {
     const res = await tx.execute(sql`select nextval('import_ref_seq')::bigint as n`);
@@ -241,16 +274,50 @@ function evaluateRow(ctx: Ctx, rowNumber: number, values: Record<string, string>
   if (ctx.kind === "TERMINAL_STOCK") {
     const loc = pick(values, mapping, "location");
     n.location = loc || null;
-    if (loc && !normalizeState(loc)) warnings.push(`Location "${loc}" is not a recognised state; kept as text.`);
+    const st = normalizeState(loc);
+    n.state = st;
+    if (loc && !st && !/^\d+$/.test(loc)) warnings.push(`Location "${loc}" is not a recognised state; kept as text.`);
+    else if (loc && st && st.toLowerCase() !== loc.trim().toLowerCase()) warnings.push(`Location "${loc}" read as ${st}.`);
+    const legacyName = pick(values, mapping, "agentName");
+    n.agentName = legacyName ? normalizeName(legacyName).slice(0, 150) : null;
+
     let status = pick(values, mapping, "status");
     let comment = pick(values, mapping, "comment");
-    // Legacy sheets mix status and remarks in one "Status/Comment" column: split known status words out.
-    if (!status && /^(done|pending|treated|completed|mapped|not done|in progress)$/i.test(comment)) {
-      status = comment;
+    const STATUS_WORD = /^(done|pending|treated|completed|mapped|not done|in progress|ok)$/i;
+    if (mapping.status && mapping.status === mapping.comment) {
+      // One combined Status/Comment column: split known status words out.
+      if (STATUS_WORD.test(status)) comment = "";
+      else status = "";
+    } else {
+      if (!status && STATUS_WORD.test(comment)) {
+        status = comment;
+        comment = "";
+      } else if (status && !STATUS_WORD.test(status) && !comment) {
+        comment = status;
+        status = "";
+      }
+    }
+    // Never discard data: keep every non-empty value from columns that are not mapped.
+    const mappedCols = new Set(Object.values(mapping).filter(Boolean) as string[]);
+    const extra: Record<string, string> = {};
+    for (const [h, v] of Object.entries(values)) if (!mappedCols.has(h) && v.trim()) extra[h] = v.trim().slice(0, 200);
+    // A bare serial/TID in the remarks column is an identifier (often a swapped terminal), not a remark.
+    if (comment && (/^\d{8,20}$/.test(comment) || /^[A-Z0-9]{8}$/.test(comment) && /\d/.test(comment) && /[A-Z]/.test(comment))) {
+      extra[`${mapping.comment ?? "Comment"} (identifier)`] = comment;
       comment = "";
     }
     n.status = status || null;
     n.comment = comment || null;
+    n.extra = Object.keys(extra).length ? extra : null;
+    if (n.extra) {
+      warnings.push(`Extra values kept on the terminal record — ${Object.entries(extra).map(([h, v]) => `${h}: ${v}`).join("; ")}. Check whether these indicate a replacement terminal.`);
+    }
+
+    if (!serial) {
+      // A serial typed into the wrong column is a common spreadsheet slip — say so.
+      const misplaced = Object.entries(values).find(([h, v]) => h !== mapping.serialNumber && /^\d{8,20}$/.test(v.trim()));
+      if (misplaced) errors.serialNumber = `Serial number is missing. "${misplaced[1]}" in column "${misplaced[0]}" looks like a serial number — was it entered in the wrong column?`;
+    }
     if (serial && !errors.serialNumber) {
       const existing = ctx.terminalBySerial.get(serial);
       if (existing) {
@@ -654,6 +721,8 @@ async function importStockRow(tx: Tx, actor: Actor, batchId: string, n: Record<s
       tid: n.tid,
       iswTid: n.iswTid,
       stockLocation: n.location ? String(n.location).slice(0, 120) : null,
+      legacyAgentName: n.agentName ? String(n.agentName).slice(0, 150) : null,
+      extraIdentifiers: (n.extra as unknown as Record<string, string> | null) ?? null,
       legacyStatus: n.status ? String(n.status).slice(0, 60) : null,
       legacyComment: n.comment,
       vendorId,

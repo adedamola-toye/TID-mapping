@@ -125,8 +125,7 @@ export function BatchWizard({ initial, canSubmit }: { initial: BatchData; canSub
     });
 
   const c = d.statusCounts;
-  const mappedHeaders = d.fields.map((f) => mapping[f.key]).filter(Boolean) as string[];
-  const shownHeaders = mappedHeaders.length ? mappedHeaders : b.headers;
+  const shownHeaders = b.headers; // every column, in sheet order — nothing hidden
   const missingRequired = d.fields.filter((f) => f.required === true && !mapping[f.key]);
   const remapNeedsId = b.kind === "REMAPPING" && !mapping.serialNumber && !mapping.tid;
   const validated = b.status !== "UPLOADED";
@@ -269,7 +268,8 @@ export function BatchWizard({ initial, canSubmit }: { initial: BatchData; canSub
                     {shownHeaders.map((h) => {
                       const isAcct = mapping.accountNumber === h;
                       const v = r.raw[h] ?? "";
-                      return <td key={h} className="table-td ident whitespace-nowrap">{isAcct && v.length > 4 ? `••••••${v.slice(-4)}` : v || <span className="text-ink-subtle">—</span>}</td>;
+                      const isId = [mapping.serialNumber, mapping.tid, mapping.iswTid, mapping.accountNumber].includes(h);
+                      return <td key={h} className={clsx("table-td whitespace-nowrap", isId && "ident")}>{isAcct && v.length > 4 ? `••••••${v.slice(-4)}` : v || <span className="text-ink-subtle">—</span>}</td>;
                     })}
                     <td className="table-td text-xs">
                       {Object.values(r.errors).map((e, i) => <div key={i} className="text-bad-700">{e}</div>)}

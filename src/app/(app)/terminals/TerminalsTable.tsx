@@ -24,6 +24,7 @@ interface Row {
   lastRemappedAt: string | null;
   stockLocation: string | null;
   legacyStatus: string | null;
+  legacyAgentName: string | null;
 }
 
 const TABS: { value: string; label: string; status?: TerminalStatus[]; remapped?: boolean }[] = [
@@ -111,7 +112,17 @@ export function TerminalsTable({ anms, canExport, canRemap }: { anms: { id: stri
                 <td className="table-td ident">{r.tid ?? "—"}</td>
                 <td className="table-td ident text-ink-muted">{r.iswTid ?? "—"}</td>
                 <td className="table-td"><TerminalBadge status={r.status} /></td>
-                <td className="table-td"><span className="block max-w-[16rem] truncate">{r.agentName ?? <span className="text-ink-subtle">{r.legacyStatus ? `Legacy: ${r.legacyStatus}` : "Not mapped"}</span>}</span></td>
+                <td className="table-td">
+                  {r.agentName ? (
+                    <span className="block max-w-[16rem] truncate">{r.agentName}</span>
+                  ) : r.legacyAgentName ? (
+                    <span className="block max-w-[16rem] truncate text-ink-muted" title="From the vendor sheet — account and ANM not yet captured">
+                      {r.legacyAgentName} <span className="text-2xs uppercase tracking-wide text-accent-700">sheet</span>
+                    </span>
+                  ) : (
+                    <span className="text-ink-subtle">{r.legacyStatus ? `Legacy: ${r.legacyStatus}` : "Not mapped"}</span>
+                  )}
+                </td>
                 <td className="table-td ident text-ink-muted">{r.agentName ? r.account : "—"}</td>
                 <td className="table-td">{r.state ?? (r.stockLocation ? <span className="text-ink-subtle">{r.stockLocation} (stock)</span> : "—")}</td>
                 <td className="table-td whitespace-nowrap">{r.anmName ?? "—"}</td>

@@ -8,6 +8,8 @@ export interface ParsedSheet {
   rows: { rowNumber: number; values: Record<string, string> }[];
 }
 
+export const UNLABELLED = /^Column [A-Z]+ \(no heading\)$/;
+
 const XLSX_MAGIC = Buffer.from([0x50, 0x4b, 0x03, 0x04]); // ZIP container
 
 function cellToString(v: ExcelJS.CellValue): string {
@@ -122,19 +124,21 @@ export async function parseUpload(
   const rawHeaders = (matrix[headerIdx] ?? []).map((h) => h.replace(/\s+/g, " ").trim());
   const headers: string[] = [];
   const seen = new Map<string, number>();
+  const letter = (i: number): string => (i >= 26 ? letter(Math.floor(i / 26) - 1) : "") + String.fromCharCode(65 + (i % 26));
   rawHeaders.forEach((h, i) => {
-    let name = h || `Column ${i + 1}`;
+    // Unlabelled columns are named by their spreadsheet letter so users can recognise them.
+    let name = h || `Column ${letter(i)} (no heading)`;
     const n = seen.get(name) ?? 0;
     seen.set(name, n + 1);
     if (n > 0) name = `${name} (${n + 1})`;
     headers.push(name);
   });
   // Drop trailing empty columns.
-  while (headers.length && /^Column \d+$/.test(headers[headers.length - 1]) &&
+  while (headers.length && UNLABELLED.test(headers[headers.length - 1]) &&
     matrix.slice(headerIdx + 1).every((r) => !(r[headers.length - 1] ?? "").trim())) {
     headers.pop();
   }
-  if (headers.filter((h) => !/^Column \d+$/.test(h)).length === 0) {
+  if (headers.filter((h) => !UNLABELLED.test(h)).length === 0) {
     throw new AppError("BAD_REQUEST", "No header row was found. The first rows of the sheet must contain column titles.");
   }
 

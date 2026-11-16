@@ -102,6 +102,17 @@ describe("locations", () => {
     expect(normalizeState("Port Harcourt")).toBe("Rivers");
     expect(normalizeState("Nowhere")).toBeNull();
   });
+  it("handles the messy locations found in the real vendor sheet", () => {
+    expect(normalizeState("FCT-Abuja")).toBe("FCT");
+    expect(normalizeState("abuja")).toBe("FCT");
+    expect(normalizeState("TARABA")).toBe("Taraba");
+    expect(normalizeState("PLATEAU")).toBe("Plateau");
+    expect(normalizeState("kadunna")).toBe("Kaduna"); // typo
+    expect(normalizeState("10, Ahmed Jimoh close Surulere Lagos")).toBe("Lagos"); // address
+    expect(normalizeState("Lagos, Nigeria")).toBe("Lagos"); // "Niger" must not match inside "Nigeria"
+    expect(normalizeState("1662513000391")).toBeNull(); // a serial typed in the wrong column
+    expect(normalizeState("")).toBeNull();
+  });
 });
 
 describe("password policy", () => {

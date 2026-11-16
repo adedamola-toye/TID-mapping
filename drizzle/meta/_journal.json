@@ -15,6 +15,13 @@
       "when": 1794838847808,
       "tag": "0001_hardening",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794841821642,
+      "tag": "0002_legacy_agent",
+      "breakpoints": true
     }
   ]
 }

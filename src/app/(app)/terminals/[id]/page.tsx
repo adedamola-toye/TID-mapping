@@ -56,10 +56,20 @@ export default async function TerminalPage({ params }: { params: Promise<{ id: s
         </Card>
         <Card title="Vendor batch record">
           <dl className="space-y-3">
+            <KV label="Merchant on vendor sheet">{t.legacyAgentName ?? "—"}</KV>
             <KV label="Vendor location">{t.stockLocation ?? "—"}</KV>
             <KV label="Legacy status">{t.legacyStatus ?? "—"}</KV>
             <KV label="Legacy comment">{t.legacyComment ?? "—"}</KV>
             <KV label="Registered">{fmtDateTime(t.createdAt)}</KV>
+            {Object.keys(t.extraIdentifiers).length > 0 && (
+              <KV label="Other values on the vendor sheet">
+                <ul className="space-y-0.5">
+                  {Object.entries(t.extraIdentifiers).map(([k, v]) => (
+                    <li key={k}><span className="text-ink-muted">{k}:</span> <span className="ident">{v}</span></li>
+                  ))}
+                </ul>
+              </KV>
+            )}
           </dl>
           {can(actor.role, "terminal:manage") && <TerminalAdmin id={t.id} status={t.status} iswTid={t.iswTid} legacyComment={t.legacyComment} />}
         </Card>
@@ -67,7 +77,13 @@ export default async function TerminalPage({ params }: { params: Promise<{ id: s
 
       <h2 className="mb-3 mt-8 text-xs font-semibold uppercase tracking-wider text-ink-muted">Mapping history</h2>
       {d.mappings.length === 0 ? (
-        <Card><p className="text-sm text-ink-muted">This terminal has not been mapped yet.</p></Card>
+        <Card>
+          <p className="text-sm text-ink-muted">
+            {t.legacyAgentName
+              ? `The vendor sheet shows this terminal with ${t.legacyAgentName}${t.legacyStatus ? ` (status "${t.legacyStatus}")` : ""}, but no account number or ANM has been captured yet. Create a new mapping to bring it under full control — the details will be pre-filled.`
+              : "This terminal has not been mapped yet."}
+          </p>
+        </Card>
       ) : (
         <ol className="space-y-4">
           {d.mappings.map((m) => (

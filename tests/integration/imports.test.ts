@@ -62,6 +62,70 @@ describe("vendor TID batch (legacy spreadsheet structure)", () => {
   });
 });
 
+describe("real Elnexu sheet layout (structure from the bank's sample, FICTIONAL values)", () => {
+  /**
+   * Mirrors the sample the bank supplied: merchant names in an UNLABELLED first column, a blank row
+   * under the header, "Status/Comment" spanning two columns (status + unlabelled remarks), an extra
+   * "@dropdown" column, 8/13/14-digit numeric serials, messy locations, a replacement serial in the
+   * remarks column, and a stray serial typed into the Location column far below the data.
+   */
+  it("keeps merchant names, status, remarks and every extra identifier; normalises locations", async () => {
+    const id = () => newTerminalIds();
+    const r = [id(), id(), id(), id(), id(), id()];
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet("test data");
+    ws.addRow(["  ", "Location", "Terminal Serial Number", "Current TID", "ISW TID", "Status/Comment", null, "@dropdown"]);
+    ws.addRow([]);
+    const sn8 = Number(`4${String(Date.now()).slice(-7)}`);
+    ws.addRow(["SAMPLE FARMS MKT NIG LTD", "FCT-Abuja", sn8, r[0].tid, "2ALT9011"]);
+    ws.addRow(["SAMPLE DYNAMIC ENTERPRISE", "Rivers", r[1].serialNumber, r[1].tid, "2ALT9015", "Done", "Having EOD Issues"]);
+    ws.addRow(["SAMPLE LOGISTICS LIMITED", "10, Sample close Surulere Lagos", r[2].serialNumber, r[2].tid, "2ALT9019"]);
+    ws.addRow(["SAMPLE PHONE ACCESSORIES", "kadunna", r[3].serialNumber, r[3].tid, "2ALT9033", "Done", 1662426999463, "2ISAZZSS"]);
+    ws.addRow(["SAMPLE MULTI-TRADE LTD", "Ogun", r[4].serialNumber, r[4].tid, "2ALT9030", "Done", "No Issue"]);
+    ws.addRow(["SAMPLE STORES", null, r[5].serialNumber, r[5].tid, "2ALT9031"]);
+    for (let i = 0; i < 60; i++) ws.addRow([]);
+    ws.addRow([null, 1662513999391]);
+    const buf = Buffer.from(await wb.xlsx.writeBuffer());
+
+    const up = await imp.uploadBatch(w.ops, "TERMINAL_STOCK", "elnexu sheet.xlsx", buf);
+    expect(up.mapping).toMatchObject({
+      agentName: "Column A (no heading)", // unlabelled merchant column detected
+      serialNumber: "Terminal Serial Number",
+      tid: "Current TID",
+      iswTid: "ISW TID",
+      location: "Location",
+      status: "Status/Comment",
+      comment: "Column G (no heading)", // unlabelled remarks next to Status/Comment
+    });
+    const v = await imp.validateBatch(w.ops, up.batchId);
+    expect(v.counts).toEqual({ VALID: 6, ERROR: 1, DUPLICATE: 0 });
+    const b = await imp.getBatch(w.ops, up.batchId, { pageSize: 50 });
+    const stray = b.rows.find((x) => x.status === "ERROR")!;
+    expect(stray.errors.serialNumber).toMatch(/looks like a serial number — was it entered in the wrong column/);
+
+    await imp.commitBatch(w.ops, up.batchId);
+    const get = async (serial: string) => (await getDb().select().from(terminals).where(eq(terminals.serialNumber, serial)))[0];
+    expect(await get(String(sn8))).toMatchObject({ legacyAgentName: "SAMPLE FARMS MKT NIG LTD", stockLocation: "FCT-Abuja", iswTid: "2ALT9011" });
+    expect(await get(r[1].serialNumber)).toMatchObject({ legacyAgentName: "SAMPLE DYNAMIC ENTERPRISE", legacyStatus: "Done", legacyComment: "Having EOD Issues" });
+    expect(await get(r[4].serialNumber)).toMatchObject({ legacyStatus: "Done", legacyComment: "No Issue" });
+    const swapped = await get(r[3].serialNumber);
+    expect(swapped.legacyComment).toBeNull();
+    expect(swapped.extraIdentifiers).toEqual({ "Column G (no heading) (identifier)": "1662426999463", "@dropdown": "2ISAZZSS" });
+    const row = b.rows.find((x) => x.raw["Terminal Serial Number"] === r[3].serialNumber)!;
+    expect(row.normalized.state).toBe("Kaduna");
+
+    // The terminal lookup used by New Mapping pre-fills from the sheet
+    const { lookupForRemap } = await import("@/server/services/terminals");
+    const l = await lookupForRemap(w.field, r[2].serialNumber);
+    expect(l.terminal).toMatchObject({ tid: r[2].tid, iswTid: "2ALT9019", legacyAgentName: "SAMPLE LOGISTICS LIMITED", stockState: "Lagos" });
+    expect(l.current).toBeNull();
+
+    // Completing a legacy terminal with account + ANM goes through the normal mapping workflow
+    const req = await svc.createMappingRequest(w.ops, { serialNumber: r[2].serialNumber, tid: r[2].tid, agentName: "SAMPLE LOGISTICS LIMITED", accountNumber: fakeAccount(), state: "Lagos", anmId: w.anm.id });
+    expect(req.iswTid).toBe("2ALT9019");
+  });
+});
+
 describe("mapping batch upload", () => {
   it("validates every row, reports duplicates & missing info, allows correction, imports only valid rows", async () => {
     const ok1 = newTerminalIds();

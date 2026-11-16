@@ -9,7 +9,7 @@ import { writeAudit } from "../audit";
 import { hmac } from "../crypto";
 import type { Actor } from "../actor";
 import { can } from "../rbac";
-import { OPEN_STATUSES, TERMINAL_STATUSES } from "@/lib/constants";
+import { OPEN_STATUSES, TERMINAL_STATUSES, normalizeState } from "@/lib/constants";
 import { maskAccount } from "@/lib/format";
 import { fieldErrors, normalizeAccount, normalizeIdentifier, optionalTidSchema } from "@/lib/validation";
 
@@ -38,7 +38,7 @@ export function terminalFilters(f: z.infer<typeof terminalSearchSchema>): SQL[] 
     const esc = (s: string) => s.replace(/[\\%_]/g, (m) => "\\" + m);
     const idLike = `%${esc(normalizeIdentifier(f.q))}%`;
     const like = `%${esc(f.q.trim())}%`;
-    conds.push(or(ilike(terminals.serialNumber, idLike), ilike(terminals.tid, idLike), ilike(terminals.iswTid, idLike), ilike(cm.agentName, like), ilike(cm.anmName, like))!);
+    conds.push(or(ilike(terminals.serialNumber, idLike), ilike(terminals.tid, idLike), ilike(terminals.iswTid, idLike), ilike(cm.agentName, like), ilike(cm.anmName, like), ilike(terminals.legacyAgentName, like))!);
   }
   if (f.accountNumber?.trim()) {
     const acct = normalizeAccount(f.accountNumber);
@@ -93,6 +93,7 @@ export async function searchTerminals(actor: Actor, input: unknown) {
       lastRemappedAt: terminals.lastRemappedAt,
       stockLocation: terminals.stockLocation,
       legacyStatus: terminals.legacyStatus,
+      legacyAgentName: terminals.legacyAgentName,
       createdAt: terminals.createdAt,
     })
     .from(terminals)
@@ -152,7 +153,18 @@ export async function lookupForRemap(actor: Actor, identifier: string) {
   else if (!current) blocker = "This terminal has no active mapping yet. Use New Mapping instead.";
   else if (t.status === "INACTIVE") blocker = "This terminal is inactive.";
   return {
-    terminal: { id: t.id, serialNumber: t.serialNumber, tid: t.tid, iswTid: t.iswTid, status: t.status },
+    terminal: {
+      id: t.id,
+      serialNumber: t.serialNumber,
+      tid: t.tid,
+      iswTid: t.iswTid,
+      status: t.status,
+      // From the vendor sheet — used to pre-fill a new mapping.
+      legacyAgentName: t.legacyAgentName,
+      legacyStatus: t.legacyStatus,
+      stockLocation: t.stockLocation,
+      stockState: normalizeState(t.stockLocation),
+    },
     current,
     openRequest: open && (can(actor.role, "request:view_all") || open.createdBy === actor.id) ? { id: open.id, reference: open.reference } : open ? { id: null, reference: open.reference } : null,
     blocker,

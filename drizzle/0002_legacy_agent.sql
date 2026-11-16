@@ -1,0 +1,1 @@
+ALTER TABLE "terminals" ADD COLUMN "legacy_agent_name" varchar(150);

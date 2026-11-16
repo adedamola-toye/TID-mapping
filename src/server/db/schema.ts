@@ -182,6 +182,8 @@ export const terminals = pgTable(
     stockLocation: varchar("stock_location", { length: 120 }),
     legacyStatus: varchar("legacy_status", { length: 60 }),
     legacyComment: text("legacy_comment"),
+    /** Merchant name as written on the vendor sheet (no account/ANM yet, so not a mapping version). */
+    legacyAgentName: varchar("legacy_agent_name", { length: 150 }),
     extraIdentifiers: jsonb("extra_identifiers").$type<Record<string, string>>(),
     importBatchId: uuid("import_batch_id"),
     createdBy: uuid("created_by").references(() => users.id),
