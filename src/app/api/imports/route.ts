@@ -4,6 +4,9 @@ import { AppError } from "@/server/errors";
 import { config } from "@/server/config";
 import { rateLimit } from "@/server/auth/rateLimit";
 
+// Excel parsing/validation can take longer than the default serverless timeout.
+export const maxDuration = 60;
+
 export const GET = api(async ({ actor }) => ({ items: await listBatches(actor) }), { permission: "import:run" });
 
 export const POST = api(

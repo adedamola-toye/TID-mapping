@@ -1,0 +1,10 @@
+# Never upload local secrets or large local artifacts to Vercel.
+.env
+.env.*
+!.env.example
+npm-cache/
+build.log
+.opencode/
+coverage/
+playwright-report/
+test-results/

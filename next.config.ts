@@ -15,10 +15,17 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
-  output: "standalone",
+  // Docker/self-hosting uses the standalone server; Vercel manages its own output.
+  output: process.env.VERCEL ? undefined : "standalone",
   serverExternalPackages: ["exceljs", "pg"],
+  // Keep Turbopack anchored to this project (otherwise it can pick up a
+  // package-lock.json from a parent directory and mis-detect the workspace root).
+  turbopack: { root: process.cwd() },
   experimental: {
     serverActions: { bodySizeLimit: "1mb" },
+    // Default is CPUs-1 (11 here), which exhausts memory during page-data
+    // collection on smaller machines. Two workers is plenty and safe everywhere.
+    cpus: 2,
   },
   async headers() {
     return [
