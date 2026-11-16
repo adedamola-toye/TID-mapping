@@ -1,0 +1,55 @@
+{
+  "name": "wakeel-terminal-mapping",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wakeel POS Terminal Mapping & Remapping Workflow Platform — The Alternative Bank",
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx --conditions=react-server scripts/seed.ts",
+    "db:reset": "tsx --conditions=react-server scripts/reset.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test --trace off",
+    "create-admin": "tsx --conditions=react-server scripts/create-admin.ts"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.45.4",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^1.73.0",
+    "next": "^16.4.6",
+    "pg": "^8.23.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "server-only": "^0.0.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^22.20.5",
+    "@types/pg": "^8.23.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "autoprefixer": "^10.6.2",
+    "dotenv": "^18.0.10",
+    "drizzle-kit": "^0.31.11",
+    "postcss": "^8.5.33",
+    "tailwindcss": "^3.4.19",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "exceljs": {
+      "uuid": "^11.1.1"
+    }
+  }
+}
